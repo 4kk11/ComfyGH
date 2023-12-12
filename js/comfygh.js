@@ -16,20 +16,17 @@ app.registerExtension({
     },
     loadedGraphNode(node, _) {
         if(node.type === "LoadImageFromGH"){
-            console.log(node);
+            // update node image preview
             api.addEventListener("update_preview", ({ detail }) => {
                 const img = new Image();
                 img.onload = () => {
                     node.imgs = [img];
                     app.graph.setDirtyCanvas(true);
                 }
-                
+                // add timestamp to prevent caching
                 const timestamp = new Date().getTime();
-
                 img.src = `http://127.0.0.1:8188/view?filename=${detail.image}&type=input&subfolder=&timestamp=${timestamp}0`;
-
                 node.setSizeForImage?.();
-                // app.queuePrompt(0);
             });
         }
     },
