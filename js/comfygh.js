@@ -11,7 +11,6 @@ app.registerExtension({
     },
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         if(nodeData.name === "LoadImageFromGH"){
-            console.log(nodeData);
         }
     },
     loadedGraphNode(node, _) {
@@ -25,7 +24,7 @@ app.registerExtension({
                 }
                 // add timestamp to prevent caching
                 const timestamp = new Date().getTime();
-                img.src = `http://127.0.0.1:8188/view?filename=${detail.image}&type=input&subfolder=&timestamp=${timestamp}0`;
+                img.src = `http://127.0.0.1:8188/view?filename=${detail.image}&type=input&subfolder=&timestamp=${timestamp}`;
                 node.setSizeForImage?.();
             });
         }
