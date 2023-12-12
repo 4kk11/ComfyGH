@@ -1,18 +1,20 @@
 import torch
 import folder_paths
+import hashlib
 import os
 from PIL import Image, ImageOps
 import numpy as np
 
+SOURCE_IMAGE_NAME = "comfygh.png"
 
 class LoadImageFromGH:
     @classmethod
     def INPUT_TYPES(s):
         input_dir = folder_paths.get_input_directory()
-        files = ["comfygh.png"]
+        files = [SOURCE_IMAGE_NAME]
         return {
             "required": {
-                "image": (sorted(files), {"image_upload": False})
+                "image": (sorted(files), {"image_upload": True})
             }
         }
     RETURN_TYPES = ("IMAGE", )
@@ -34,6 +36,23 @@ class LoadImageFromGH:
         else:
             mask = torch.zeros((64,64), dtype=torch.float32, device="cpu")
         return (image, mask.unsqueeze(0))
+    
+
+    @classmethod
+    def IS_CHANGED(s, image):
+        print("IS_CHANGED", image)
+        image_path = folder_paths.get_annotated_filepath(image)
+        m = hashlib.sha256()
+        with open(image_path, 'rb') as f:
+            m.update(f.read())
+        return m.digest().hex()
+
+    @classmethod
+    def VALIDATE_INPUTS(s, image):
+        if not folder_paths.exists_annotated_filepath(image):
+            return "Invalid image file: {}".format(image)
+
+        return True
 
 
 

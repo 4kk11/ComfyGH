@@ -17,14 +17,17 @@ from aiohttp import web
 async def upload_file(request):
     data = await request.json()
     image_data = data.get('image')
+    file_name = nodes.SOURCE_IMAGE_NAME
 
     if image_data:
         image_data = base64.b64decode(image_data)
         input_dir = folder_paths.get_input_directory()
-        file_path = os.path.join(input_dir, "comfygh.png")
+        file_path = os.path.join(input_dir, file_name)
         with open(file_path, "wb") as f:
             f.write(image_data)
-        server.PromptServer.instance.send_sync("queue_prompt", { "status": "aaaaa" })
+        server.PromptServer.instance.send_sync("update_preview", { "image": file_name })
+
+        server.PromptServer.instance.send_sync("queue_prompt", { })
         return web.Response(text="ok")
     
     return web.Response(text="no image data", status=400)
