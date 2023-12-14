@@ -10,6 +10,7 @@
   
   <ItemGroup>
     <PackageReference Include="Grasshopper" Version="7.13.21348.13001" IncludeAssets="compile;build" />
+    <PackageReference Include="RestSharp" Version="110.2.0" />
   </ItemGroup>
 
 	<PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
