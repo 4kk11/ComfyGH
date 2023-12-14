@@ -1,0 +1,58 @@
+{
+  "format": 1,
+  "restore": {
+    "D:\\Users\\akiak\\Desktop\\ai\\ComfyUI_windows_portable\\ComfyUI\\custom_nodes\\ComfyGH\\gh\\ComfyGH.csproj": {}
+  },
+  "projects": {
+    "D:\\Users\\akiak\\Desktop\\ai\\ComfyUI_windows_portable\\ComfyUI\\custom_nodes\\ComfyGH\\gh\\ComfyGH.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\Users\\akiak\\Desktop\\ai\\ComfyUI_windows_portable\\ComfyUI\\custom_nodes\\ComfyGH\\gh\\ComfyGH.csproj",
+        "projectName": "ComfyGH",
+        "projectPath": "D:\\Users\\akiak\\Desktop\\ai\\ComfyUI_windows_portable\\ComfyUI\\custom_nodes\\ComfyGH\\gh\\ComfyGH.csproj",
+        "packagesPath": "C:\\Users\\akiak\\.nuget\\packages\\",
+        "outputPath": "D:\\Users\\akiak\\Desktop\\ai\\ComfyUI_windows_portable\\ComfyUI\\custom_nodes\\ComfyGH\\gh\\obj\\",
+        "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "D:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
+        "configFilePaths": [
+          "C:\\Users\\akiak\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        ],
+        "originalTargetFrameworks": [
+          "net48"
+        ],
+        "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net48": {
+            "targetAlias": "net48",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        }
+      },
+      "frameworks": {
+        "net48": {
+          "targetAlias": "net48",
+          "dependencies": {
+            "Grasshopper": {
+              "include": "Compile, Build",
+              "target": "Package",
+              "version": "[7.13.21348.13001, )"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\7.0.402\\RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

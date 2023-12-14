@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <Version>1.0</Version>
+    <Title>ComfyGH</Title>
+    <Description></Description>
+    <TargetExt>.gha</TargetExt>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Grasshopper" Version="7.13.21348.13001" IncludeAssets="compile;build" />
+  </ItemGroup>
+
+	<PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+		<MyDestinationFolder>$(USERPROFILE)\AppData\Roaming\Grasshopper\Libraries</MyDestinationFolder>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(OS)' != 'Windows_NT'">
+		<MyDestinationFolder>$(HOME)/Library/Application Support/McNeel/Rhinoceros/8.0/Plug-ins/Grasshopper (b45a29b1-4343-4035-989e-044e8580d9cf)/Libraries</MyDestinationFolder>
+	</PropertyGroup>
+
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<ItemGroup>
+			<MySourceFiles Include="$(TargetDir)\**" />
+		</ItemGroup>
+		<Copy SourceFiles="@(MySourceFiles)" DestinationFolder="$(MyDestinationFolder)\$(ProjectName)" />
+	</Target>
+
+</Project>
