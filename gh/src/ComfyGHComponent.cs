@@ -52,13 +52,14 @@ namespace ComfyGH
                 string path = "";
                 DA.GetData(0, ref path);
                 input_image = CreateData(path);
-                
+
                 DA.GetData(1, ref run);
             }
 
             private string CreateData(string path)
             {
-                var data = new Dictionary<string, string>{
+                var data = new Dictionary<string, string>
+                {
                     ["type"] = "queue_prompt",
                     ["data"] = path,
                 };
@@ -68,7 +69,7 @@ namespace ComfyGH
 
             public override void SetData(IGH_DataAccess DA)
             {
-                if(CancellationToken.IsCancellationRequested) return;
+                if (CancellationToken.IsCancellationRequested) return;
                 DA.SetData(0, output_image);
             }
 
@@ -80,19 +81,31 @@ namespace ComfyGH
                     {
                         try
                         {
-                            Uri serverUri = new Uri("ws://127.0.0.1:8188/ws"); 
+
+                            Uri serverUri = new Uri("ws://127.0.0.1:6789");
                             await client.ConnectAsync(serverUri, CancellationToken);
 
                             // Send to server
+                            Console.WriteLine("Sending: {0}", input_image);
                             byte[] buffer = Encoding.UTF8.GetBytes(input_image);
-                            await client.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken);
+                            await client.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
+                            Console.WriteLine("sended");
+                            while (client.State == WebSocketState.Open)
+                            {
 
-                            // Receive from server
-                            var receiveBuffer = new byte[1024];
-                            var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken);
+                                // Receive from server
+                                var receiveBuffer = new byte[1024];
+                                var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
 
-                            // Convert to string
-                            output_image = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
+                                // Convert to string
+                                output_image = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
+                                Console.WriteLine("Received: {0}", output_image);
+
+                                if (result.MessageType == WebSocketMessageType.Close)
+                                {
+                                    break;
+                                }
+                            }
                         }
                         catch
                         {
@@ -104,7 +117,7 @@ namespace ComfyGH
 
                 }
                 Done();
-                
+
             }
 
         }

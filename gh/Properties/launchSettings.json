@@ -2,8 +2,8 @@
   "profiles": {
     "gh": {
       "commandName": "Executable",
-      "executablePath": "D:\\Program Files\\Rhino 8\\System\\Rhino.exe",
-      "commandLineArgs": ""
+      "executablePath": "/Applications/Rhino 8.app/Contents/MacOS/Rhinoceros",
+      "commandLineArgs": "$(TargetPath)"
     }
   }
 }
