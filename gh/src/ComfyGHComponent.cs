@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Net.WebSockets;
 using RestSharp;
+using Newtonsoft.Json;
 using Grasshopper;
 using Grasshopper.Kernel;
 using Rhino.Geometry;
@@ -48,8 +49,21 @@ namespace ComfyGH
 
             public override void GetData(IGH_DataAccess DA, GH_ComponentParamServer Params)
             {
-                DA.GetData(0, ref input_image);
+                string path = "";
+                DA.GetData(0, ref path);
+                input_image = CreateData(path);
+                
                 DA.GetData(1, ref run);
+            }
+
+            private string CreateData(string path)
+            {
+                var data = new Dictionary<string, string>{
+                    ["type"] = "queue_prompt",
+                    ["data"] = path,
+                };
+
+                return JsonConvert.SerializeObject(data);
             }
 
             public override void SetData(IGH_DataAccess DA)
