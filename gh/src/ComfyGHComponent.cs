@@ -17,7 +17,7 @@ namespace ComfyGH
 {
     public class ComfyGHComponent : GH_AsyncComponent
     {
-
+        string output_image;
         public ComfyGHComponent() : base("Comfy", "Comfy", "", "ComfyGH", "Main")
         {
             BaseWorker = new ComfyWorker(this);
@@ -50,14 +50,13 @@ namespace ComfyGH
 
             public override void GetData(IGH_DataAccess DA, GH_ComponentParamServer Params)
             {
-
                 DA.GetData(0, ref input_image);
                 DA.GetData(1, ref run);
             }
 
             public override void SetData(IGH_DataAccess DA)
             {
-                DA.SetData(0, output_image);
+                DA.SetData(0, ((ComfyGHComponent)Parent).output_image);
             }
 
             public override async void DoWork(Action<string, double> ReportProgress, Action Done)
@@ -102,7 +101,7 @@ namespace ComfyGH
                                         break;
 
                                     case "comfygh_executed":
-                                        output_image = (string)data["image"];
+                                        ((ComfyGHComponent)Parent).output_image = (string)data["image"];
                                         isClose = true;
                                         break;
 
