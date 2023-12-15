@@ -11,6 +11,7 @@ using Grasshopper.Kernel;
 using Rhino.Geometry;
 using GrasshopperAsyncComponent;
 using System.Text;
+using System.Collections;
 
 namespace ComfyGH
 {
@@ -49,10 +50,7 @@ namespace ComfyGH
 
             public override void GetData(IGH_DataAccess DA, GH_ComponentParamServer Params)
             {
-                string path = "";
-                DA.GetData(0, ref path);
-                input_image = CreateData(path);
-
+                DA.GetData(0, ref input_image);
                 DA.GetData(1, ref run);
             }
 
@@ -81,43 +79,76 @@ namespace ComfyGH
                     {
                         try
                         {
-
-                            Uri serverUri = new Uri("ws://127.0.0.1:6789");
+                            // Connect to websocket server
+                            Uri serverUri = new Uri("ws://127.0.0.1:8188/ws?clientId=0CB33780A6EE4767A5DDC2AD41BFE975");
                             await client.ConnectAsync(serverUri, CancellationToken);
+                        
 
-                            // Send to server
-                            Console.WriteLine("Sending: {0}", input_image);
-                            byte[] buffer = Encoding.UTF8.GetBytes(input_image);
-                            await client.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
-                            Console.WriteLine("sended");
-                            while (client.State == WebSocketState.Open)
+                            // create rest client
+                            RestClient restClient = new RestClient("http://127.0.0.1:8188");
+                            // Send to http server
+                            PostQueuePrompt(restClient, input_image);
+
+                            // Receive from server
+                            while(client.State == WebSocketState.Open)
                             {
-
-                                // Receive from server
                                 var receiveBuffer = new byte[1024];
                                 var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
 
-                                // Convert to string
-                                output_image = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
-                                Console.WriteLine("Received: {0}", output_image);
+                                // Convet to json
+                                var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
+                                var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
 
-                                if (result.MessageType == WebSocketMessageType.Close)
+                                var type = comfyReceiveObject.Type;
+                                var data = comfyReceiveObject.Data;
+                                
+                                bool isClose = false;
+
+                                switch(type)
                                 {
+                                    case "comfygh_progress":
+                                        var value = Convert.ToInt32(data["value"]);
+                                        var max = Convert.ToInt32(data["max"]);
+                                        ReportProgress(Id, (double)value / max);
+                                        break;
+
+                                    case "comfygh_executed":
+                                        output_image = (string)data["image"];
+                                        break;
+
+                                    case "comfygh_close":
+                                        isClose = true;
+                                        break;
+                                }
+                                
+
+                                if (isClose)
+                                {
+                                    // Close websocket
+                                    await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
                                     break;
                                 }
                             }
+                            Done();
                         }
-                        catch
+                        catch(Exception e)
                         {
-                            Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Failed to connect to Comfy server. Make sure it's running.");
+                            Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
                             return;
                         }
                     }
-
-
                 }
-                Done();
+                
 
+            }
+
+            private void PostQueuePrompt(RestClient restClient, string imagePath)
+            {
+                string base64Image = Convert.ToBase64String(File.ReadAllBytes(imagePath));
+                RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/queue_prompt", Method.POST);
+                var body = new { image = base64Image };
+                restRequest.AddJsonBody(body);
+                restClient.Execute(restRequest);
             }
 
         }
@@ -126,5 +157,15 @@ namespace ComfyGH
         protected override System.Drawing.Bitmap Icon => null;
 
         public override Guid ComponentGuid => new Guid("064ee850-b34f-416e-b497-5929f70c33c1");
+    }
+
+
+    public class ComfyReceiveObject
+    {
+        [JsonProperty("type")]
+        public string Type { get; set; }
+
+        [JsonProperty("data")]
+        public Dictionary<string, object> Data { get; set; }
     }
 }
