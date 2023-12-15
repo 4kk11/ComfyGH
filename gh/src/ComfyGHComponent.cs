@@ -50,24 +50,13 @@ namespace ComfyGH
 
             public override void GetData(IGH_DataAccess DA, GH_ComponentParamServer Params)
             {
+
                 DA.GetData(0, ref input_image);
                 DA.GetData(1, ref run);
             }
 
-            private string CreateData(string path)
-            {
-                var data = new Dictionary<string, string>
-                {
-                    ["type"] = "queue_prompt",
-                    ["data"] = path,
-                };
-
-                return JsonConvert.SerializeObject(data);
-            }
-
             public override void SetData(IGH_DataAccess DA)
             {
-                if (CancellationToken.IsCancellationRequested) return;
                 DA.SetData(0, output_image);
             }
 
@@ -114,6 +103,7 @@ namespace ComfyGH
 
                                     case "comfygh_executed":
                                         output_image = (string)data["image"];
+                                        isClose = true;
                                         break;
 
                                     case "comfygh_close":
@@ -129,7 +119,7 @@ namespace ComfyGH
                                     break;
                                 }
                             }
-                            Done();
+                            
                         }
                         catch(Exception e)
                         {
@@ -137,6 +127,7 @@ namespace ComfyGH
                             return;
                         }
                     }
+                    Done();
                 }
                 
 

@@ -2,8 +2,11 @@ import torch
 import folder_paths
 import hashlib
 import os
+import random
 from PIL import Image, ImageOps
 import numpy as np
+import nodes
+import server
 
 SOURCE_IMAGE_NAME = "comfygh.png"
 
@@ -56,21 +59,29 @@ class GH_LoadImage:
 
 
 
-class GH_PreviewImage:
+class GH_PreviewImage(nodes.SaveImage):
+    def __init__(self):
+        self.output_dir = folder_paths.get_temp_directory()
+        self.type = "temp"
+        self.prefix_append = "_temp_" + ''.join(random.choice("abcdefghijklmnopqrstupvxyz") for x in range(5))
+    
     @classmethod
     def INPUT_TYPES(s):
-        return {
-            "required": {
-                "raw_text": ("STRING", {"multiline": True})
-            }
-        }
+        return {"required":
+                    {"images": ("IMAGE", ), },
+                "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
+                }
+    
     RETURN_TYPES = ()
     FUNCTION = "run"
     OUTPUT_NODE = True
     CATEGORY = "ComfyGH"
 
-    def run(self, raw_text):
-        return ()
+    def run(self, images, filename_prefix = "ComfyUI", prompt = None, extra_pnginfo = None):
+        result = super().save_images(images, filename_prefix, prompt, extra_pnginfo)
+        print(result['ui']['images'][0]['filename'])
+        server.PromptServer.instance.send_sync("comfygh_executed", { "image": result['ui']['images'][0]['filename'] })
+        return result
 
 NODE_CLASS_MAPPINGS = {
     'GH_LoadImage': GH_LoadImage,
