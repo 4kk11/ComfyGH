@@ -7,7 +7,7 @@ import numpy as np
 
 SOURCE_IMAGE_NAME = "comfygh.png"
 
-class LoadImageFromGH:
+class GH_LoadImage:
     @classmethod
     def INPUT_TYPES(s):
         input_dir = folder_paths.get_input_directory()
@@ -56,7 +56,7 @@ class LoadImageFromGH:
 
 
 
-class SendImageToGH:
+class GH_PreviewImage:
     @classmethod
     def INPUT_TYPES(s):
         return {
@@ -73,11 +73,11 @@ class SendImageToGH:
         return ()
 
 NODE_CLASS_MAPPINGS = {
-    'LoadImageFromGH': LoadImageFromGH,
-    'SendImageToGH': SendImageToGH,
+    'GH_LoadImage': GH_LoadImage,
+    'GH_PreviewImage': GH_PreviewImage,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    'LoadImageFromGH': 'Load Image from grasshopper',
-    'SendImageToGH': 'Send Image to grasshopper',
+    'GH_LoadImage': 'Load Image from grasshopper',
+    'GH_PreviewImage': 'Send Image to grasshopper',
 }

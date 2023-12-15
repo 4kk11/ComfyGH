@@ -23,11 +23,11 @@ app.registerExtension({
         });
     },
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
-        if(nodeData.name === "LoadImageFromGH"){
+        if(nodeData.name === "GH_LoadImage"){
         }
     },
     loadedGraphNode(node, _) {
-        if(node.type === "LoadImageFromGH"){
+        if(node.type === "GH_LoadImage"){
             // update node image preview
             api.addEventListener("update_preview", ({ detail }) => {
                 const img = new Image();
