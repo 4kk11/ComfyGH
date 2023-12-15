@@ -2,11 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Net.WebSockets;
 using RestSharp;
 using Grasshopper;
 using Grasshopper.Kernel;
 using Rhino.Geometry;
 using GrasshopperAsyncComponent;
+using System.Text;
 
 namespace ComfyGH
 {
@@ -55,22 +58,36 @@ namespace ComfyGH
                 DA.SetData(0, output_image);
             }
 
-            public override void DoWork(Action<string, double> ReportProgress, Action Done)
+            public override async void DoWork(Action<string, double> ReportProgress, Action Done)
             {
                 if (run)
                 {
-                    string base64Image = Convert.ToBase64String(File.ReadAllBytes(this.input_image));
+                    using (var client = new ClientWebSocket())
+                    {
+                        try
+                        {
+                            Uri serverUri = new Uri("ws://127.0.0.1:8188/ws"); 
+                            await client.ConnectAsync(serverUri, CancellationToken);
 
-                    var client = new RestClient("http://127.0.0.1:8188");
-                    var request = new RestRequest("/custom_nodes/ComfyGH/queue_prompt", Method.Post);
-                    
-                    var body = new { image = base64Image };
-                    request.AddJsonBody(body);
+                            // Send to server
+                            byte[] buffer = Encoding.UTF8.GetBytes(input_image);
+                            await client.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken);
 
-                    var response = client.Execute(request);
+                            // Receive from server
+                            var receiveBuffer = new byte[1024];
+                            var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken);
 
-                    Console.WriteLine(response.Content);
-                    this.output_image = response.Content;
+                            // Convert to string
+                            output_image = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
+                        }
+                        catch
+                        {
+                            Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Failed to connect to Comfy server. Make sure it's running.");
+                            return;
+                        }
+                    }
+
+
                 }
                 Done();
                 
