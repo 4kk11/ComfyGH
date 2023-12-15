@@ -31,3 +31,13 @@ async def upload_file(request):
         return web.Response(text="ok")
     
     return web.Response(text="no image data", status=400)
+
+
+@server.PromptServer.instance.routes.post('/custom_nodes/ComfyGH/progress')
+async def propagate_progress(request):
+    data = await request.json()
+    value = data.get('value')
+    max = data.get('max')
+    client_id = "0CB33780A6EE4767A5DDC2AD41BFE975"
+    server.PromptServer.instance.send_sync("comfygh_progress", { "value": value, "max": max}, client_id)
+    return web.Response(text="ok")
