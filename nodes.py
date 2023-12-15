@@ -78,6 +78,6 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
-    'GH_LoadImage': 'Load Image from grasshopper',
-    'GH_PreviewImage': 'Send Image to grasshopper',
+    'GH_LoadImage': 'GH_LoadImage',
+    'GH_PreviewImage': 'GH_PreviewImage',
 }
