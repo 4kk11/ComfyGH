@@ -2,8 +2,8 @@
   "profiles": {
     "gh": {
       "commandName": "Executable",
-      "executablePath": "D:\\Program Files\\Rhino 8\\System\\Rhino.exe",
-      "commandLineArgs": ""
+      "executablePath": "D:/Program Files/Rhino 8/System/Rhino.exe",
+      "commandLineArgs": "$(TargetPath)"
     }
   }
 }

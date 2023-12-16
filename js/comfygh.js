@@ -8,13 +8,26 @@ app.registerExtension({
         api.addEventListener("queue_prompt", ({ detail }) => {
             app.queuePrompt(0);
         });
+        
+        api.addEventListener("progress", ({ detail }) => {
+            const value = detail.value;
+            const max = detail.max;
+            
+            api.fetchApi('/custom_nodes/ComfyGH/progress', {
+                method: 'POST',
+                body: JSON.stringify({ value, max })
+            }).then(response => {}).catch(error => {
+                console.error('Error:', error);
+            });
+
+        });
     },
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
-        if(nodeData.name === "LoadImageFromGH"){
+        if(nodeData.name === "GH_LoadImage"){
         }
     },
     loadedGraphNode(node, _) {
-        if(node.type === "LoadImageFromGH"){
+        if(node.type === "GH_LoadImage"){
             // update node image preview
             api.addEventListener("update_preview", ({ detail }) => {
                 const img = new Image();
