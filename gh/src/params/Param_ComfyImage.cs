@@ -64,7 +64,6 @@ namespace ComfyGH.Params
             // thread.Priority = ThreadPriority.BelowNormal;
             // thread.Start();
             _ = LoadPreviewImage(_imageKey);
-
             return ImageUriImageLoading.BusyLoading;
         }
 
@@ -87,9 +86,13 @@ namespace ComfyGH.Params
                 }
             }
 
-            if (list.Count == 0) return;
+            if (list.Count == 0)
+            {
+                _image = null;
+                return;
+            } 
 
-
+            
             Bitmap bitmap = list[0].bitmap;
 
 

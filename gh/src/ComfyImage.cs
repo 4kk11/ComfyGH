@@ -11,6 +11,8 @@ namespace ComfyGH
 
         public ComfyImage(Bitmap bitmap)
         {
+            if(bitmap == null)
+                throw new Exception("Bitmap is null");
             this.bitmap = bitmap;
         }
 
