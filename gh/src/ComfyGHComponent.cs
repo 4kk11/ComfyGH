@@ -12,6 +12,9 @@ using Rhino.Geometry;
 using GrasshopperAsyncComponent;
 using System.Text;
 using System.Collections;
+using ComfyGH.Params;
+using ComfyGH.Types;
+using System.Drawing;
 
 namespace ComfyGH
 {
@@ -25,7 +28,7 @@ namespace ComfyGH
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddTextParameter("ImagePath", "ImagePath", "", GH_ParamAccess.item);
+            pManager.AddParameter(new Param_ComfyImage(), "Image", "Image", "", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Run", "Run", "", GH_ParamAccess.item);
         }
 
@@ -37,7 +40,7 @@ namespace ComfyGH
         private class ComfyWorker : WorkerInstance
         {
             bool run;
-            string input_image;
+            GH_ComfyImage input_image;
             string output_image;
             public ComfyWorker(GH_Component _parent) : base(_parent)
             {
@@ -75,7 +78,7 @@ namespace ComfyGH
                             // create rest client
                             RestClient restClient = new RestClient("http://127.0.0.1:8188");
                             // Send to http server
-                            PostQueuePrompt(restClient, input_image);
+                            PostQueuePrompt(restClient, input_image.Value);
 
                             // Receive from server
                             while(client.State == WebSocketState.Open)
@@ -132,13 +135,19 @@ namespace ComfyGH
 
             }
 
-            private void PostQueuePrompt(RestClient restClient, string imagePath)
+            private void PostQueuePrompt(RestClient restClient, ComfyImage image)
             {
-                string base64Image = Convert.ToBase64String(File.ReadAllBytes(imagePath));
-                RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/queue_prompt", Method.POST);
-                var body = new { image = base64Image };
-                restRequest.AddJsonBody(body);
-                restClient.Execute(restRequest);
+                Bitmap bitmap = image.bitmap;
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                    byte[] bytes = stream.ToArray();
+                    string base64Image = Convert.ToBase64String(bytes);
+                    RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/queue_prompt", Method.POST);
+                    var body = new { image = base64Image };
+                    restRequest.AddJsonBody(body);
+                    restClient.Execute(restRequest);
+                }
             }
 
         }

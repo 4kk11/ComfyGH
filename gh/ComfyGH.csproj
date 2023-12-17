@@ -6,6 +6,7 @@
     <Title>ComfyGH</Title>
     <Description></Description>
     <TargetExt>.gha</TargetExt>
+    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
   
   <ItemGroup>
