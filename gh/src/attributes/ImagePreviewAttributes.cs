@@ -42,7 +42,7 @@ namespace ComfyGH.Attributes
             case GH_CanvasChannel.Objects:
             {
                 // カプセル（コンポーネントの外見）を作成し、描画します。
-                GH_Capsule gH_Capsule = GH_Capsule.CreateCapsule(Bounds, GH_Palette.Hidden, 5, 0);
+                GH_Capsule gH_Capsule = GH_Capsule.CreateCapsule(Bounds, GH_Palette.Hidden, 0, 0);
                 gH_Capsule.AddInputGrip(InputGrip);
                 gH_Capsule.AddOutputGrip(OutputGrip);
                 gH_Capsule.Render(graphics, Selected, base.Owner.Locked, hidden: false);
@@ -50,8 +50,7 @@ namespace ComfyGH.Attributes
                 
                 // 画像を描画するための領域を計算します。
                 Rectangle rect = GH_Convert.ToRectangle(Bounds);
-                rect.Inflate(-5, -5);
-                
+                                
                 Bitmap image;
                 ImageUriImageLoading cachedPreview = base.Owner.GetCachedPreview(out image);
 
@@ -73,11 +72,6 @@ namespace ComfyGH.Attributes
                     break;
                 }
 
-                // 領域の枠を描画します。
-                using (Pen pen = new Pen(Color.Black))
-                {
-                    graphics.DrawRectangle(pen, rect);
-                }
                 break;
             }
             }

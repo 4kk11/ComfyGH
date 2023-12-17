@@ -45,7 +45,7 @@ namespace ComfyGH.Params
         public ImageUriImageLoading GetCachedPreview(out Bitmap image)
         {
             image = _image;
-            
+
             if (image != null)
             {
                 return ImageUriImageLoading.FinishedLoading;
@@ -56,39 +56,42 @@ namespace ComfyGH.Params
                 return ImageUriImageLoading.None;
             }
 
-            Thread thread = new Thread((ThreadStart)delegate
-            {
-                LoadPreviewImage(_imageKey);
-            });
-            thread.IsBackground = true;
-            thread.Priority = ThreadPriority.BelowNormal;
-            thread.Start();
+            // Thread thread = new Thread((ThreadStart)delegate
+            // {
+            //     LoadPreviewImage(_imageKey);
+            // });
+            // thread.IsBackground = true;
+            // thread.Priority = ThreadPriority.BelowNormal;
+            // thread.Start();
+            _ = LoadPreviewImage(_imageKey);
 
             return ImageUriImageLoading.BusyLoading;
         }
 
 
         // プレビュー画像を読み込むためのメソッド。
-        private void LoadPreviewImage(int key)
+        private async Task LoadPreviewImage(int key)
         {
             if (key != _imageKey)
             {
                 return;
             }
 
-            List<GH_ComfyImage> list = new List<GH_ComfyImage>();
+            List<ComfyImage> list = new List<ComfyImage>();
 
             foreach (IGH_Goo item in m_data.AllData(skipNulls: true))
             {
-                if (item is GH_ComfyImage)
+                if (item is GH_ComfyImage comfyImage)
                 {
-                    list.Add(item as GH_ComfyImage);
+                    list.Add(new ComfyImage(comfyImage.Value));
                 }
             }
 
             if (list.Count == 0) return;
 
-            Bitmap bitmap = list[0].Value.bitmap;
+
+            Bitmap bitmap = list[0].bitmap;
+
 
             if (key == _imageKey)
             {
