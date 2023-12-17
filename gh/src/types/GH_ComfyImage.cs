@@ -32,7 +32,7 @@ namespace ComfyGH.Types
 
         public override IGH_Goo Duplicate()
         {
-            return new GH_ComfyImage(Value);
+            return new GH_ComfyImage(new ComfyImage(Value));
         }
 
         public override string ToString()

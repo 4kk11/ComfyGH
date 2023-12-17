@@ -23,7 +23,7 @@ namespace ComfyGH
 
         public ComfyImage(ComfyImage image)
         {
-            this.bitmap = image.bitmap;
+            this.bitmap = new Bitmap(image.bitmap);
         }
     }
 }
