@@ -40,8 +40,7 @@ namespace ComfyGH
         private class ComfyWorker : WorkerInstance
         {
             bool run;
-            GH_ComfyImage input_image;
-            string output_image;
+            ComfyImage input_image;
             public ComfyWorker(GH_Component _parent) : base(_parent)
             {
             }
@@ -53,7 +52,11 @@ namespace ComfyGH
 
             public override void GetData(IGH_DataAccess DA, GH_ComponentParamServer Params)
             {
-                DA.GetData(0, ref input_image);
+                GH_ComfyImage gH_ComfyImage = null;
+                DA.GetData(0, ref gH_ComfyImage);
+                
+                if(gH_ComfyImage != null)
+                     input_image = new ComfyImage(gH_ComfyImage.Value);
                 DA.GetData(1, ref run);
             }
 
@@ -78,7 +81,7 @@ namespace ComfyGH
                             // create rest client
                             RestClient restClient = new RestClient("http://127.0.0.1:8188");
                             // Send to http server
-                            PostQueuePrompt(restClient, input_image.Value);
+                            PostQueuePrompt(restClient, input_image);
 
                             // Receive from server
                             while(client.State == WebSocketState.Open)
