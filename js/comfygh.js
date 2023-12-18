@@ -24,6 +24,12 @@ app.registerExtension({
     },
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         if(nodeData.name === "GH_LoadImage"){
+            nodeType.prototype.color = LGraphCanvas.node_colors.green.color;
+            nodeType.prototype.bgcolor = LGraphCanvas.node_colors.green.bgcolor;
+        }
+        if(nodeData.name === "GH_PreviewImage"){
+            nodeType.prototype.color = LGraphCanvas.node_colors.green.color;
+            nodeType.prototype.bgcolor = LGraphCanvas.node_colors.green.bgcolor;
         }
     },
     loadedGraphNode(node, _) {
@@ -40,6 +46,7 @@ app.registerExtension({
                 img.src = `http://127.0.0.1:8188/view?filename=${detail.image}&type=input&subfolder=&timestamp=${timestamp}`;
                 node.setSizeForImage?.();
             });
+
         }
     },
 })
