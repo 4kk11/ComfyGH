@@ -1,4 +1,7 @@
-﻿using Grasshopper.Kernel;
+﻿// I referred to the code from the following repository:
+// https://github.com/specklesystems/GrasshopperAsyncComponent
+
+using Grasshopper.Kernel;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
