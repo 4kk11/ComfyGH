@@ -1,5 +1,5 @@
 # ComfyGH
-This plugin hacks ComfyUI from Grasshopper.   
+This plugin hacks [ComfyUI](https://github.com/comfyanonymous/ComfyUI) from Grasshopper.   
 
 
 
