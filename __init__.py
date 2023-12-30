@@ -12,6 +12,9 @@ import json
 import base64
 import aiohttp
 from aiohttp import web
+import asyncio
+
+client_id = "0CB33780A6EE4767A5DDC2AD41BFE975"
 
 @server.PromptServer.instance.routes.post('/custom_nodes/ComfyGH/queue_prompt')
 async def upload_file(request):
@@ -38,6 +41,18 @@ async def propagate_progress(request):
     data = await request.json()
     value = data.get('value')
     max = data.get('max')
-    client_id = "0CB33780A6EE4767A5DDC2AD41BFE975"
     server.PromptServer.instance.send_sync("comfygh_progress", { "value": value, "max": max}, client_id)
+    return web.Response(text="ok")
+
+
+@server.PromptServer.instance.routes.get('/custom_nodes/ComfyGH/get_workflow')
+async def get_workflow(request):
+    #data = request.json()
+    server.PromptServer.instance.send_sync("get_workflow", { })
+    return web.Response(text="ok")
+
+@server.PromptServer.instance.routes.post('/custom_nodes/ComfyGH/send_workflow')
+async def send_workflow(request):
+    data = await request.json()
+    server.PromptServer.instance.send_sync("send_workflow", data, client_id)
     return web.Response(text="ok")

@@ -16,12 +16,15 @@ using ComfyGH.Params;
 using ComfyGH.Types;
 using System.Drawing;
 using ComfyGH.Attributes;
+using Newtonsoft.Json.Linq;
 
 namespace ComfyGH
 {
     public class ComfyGHComponent : GH_AsyncComponent
     {
         string output_image;
+        private static readonly string CLIENT_ID = "0CB33780A6EE4767A5DDC2AD41BFE975";
+        private static readonly string SERVER_ADDRESS = "127.0.0.1:8188";
         public ComfyGHComponent() : base("Comfy", "Comfy", "", "ComfyGH", "Main")
         {
             BaseWorker = new ComfyWorker(this);
@@ -36,6 +39,63 @@ namespace ComfyGH
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
             pManager.AddTextParameter("Output", "Output", "", GH_ParamAccess.item);
+        }
+
+        protected override async void BeforeSolveInstance()
+        {
+            Console.WriteLine("BeforeSolveInstance");
+
+            using (ClientWebSocket client = new ClientWebSocket())
+            {
+                // connect to websocket server
+                Uri serverUri = new Uri($"ws://{SERVER_ADDRESS}/ws?clientId={CLIENT_ID}");
+                await client.ConnectAsync(serverUri, CancellationToken.None);
+
+                // create rest client
+                RestClient restClient = new RestClient($"http://{SERVER_ADDRESS}");
+                RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/get_workflow", Method.GET);
+                var body = new { text = "hello" };
+                restRequest.AddJsonBody(body);
+                await restClient.ExecuteAsync(restRequest);
+
+                // receive from server
+                Dictionary<string, object> data = null;
+                while(client.State == WebSocketState.Open)
+                {
+                    var receiveBuffer = new byte[4096];
+                    var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+                    // Convet to json
+                    var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
+                    Console.WriteLine(json);
+                    var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
+
+                    var type = comfyReceiveObject.Type;
+                    
+                    if(type != "send_workflow") continue;
+                    data = comfyReceiveObject.Data;
+                    break;
+                }
+
+                var nodes = ((JArray)data["nodes"]).ToObject<List<Dictionary<string, object>>>();
+                foreach(var node in nodes)
+                {
+                    Console.WriteLine(node["id"]);
+                    Console.WriteLine(node["type"]);
+                    Console.WriteLine(node["nickname"]);
+                }
+
+                await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+            }
+
+
+            base.BeforeSolveInstance();
+        }
+
+        
+        protected override void SolveInstance(IGH_DataAccess DA)
+        {
+
+            base.SolveInstance(DA);
         }
 
         private class ComfyWorker : WorkerInstance
@@ -79,12 +139,13 @@ namespace ComfyGH
                         try
                         {
                             // Connect to websocket server
-                            Uri serverUri = new Uri("ws://127.0.0.1:8188/ws?clientId=0CB33780A6EE4767A5DDC2AD41BFE975");
+
+                            Uri serverUri = new Uri($"ws://{SERVER_ADDRESS}/ws?clientId={CLIENT_ID}");
                             await client.ConnectAsync(serverUri, CancellationToken);
-                        
+
 
                             // create rest client
-                            RestClient restClient = new RestClient("http://127.0.0.1:8188");
+                            RestClient restClient = new RestClient($"http://{SERVER_ADDRESS}");
                             // Send to http server
                             PostQueuePrompt(restClient, input_image);
 

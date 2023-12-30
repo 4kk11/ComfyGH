@@ -21,6 +21,20 @@ app.registerExtension({
             });
 
         });
+
+        api.addEventListener("get_workflow", ({detail}) => {
+
+            const workflow = app.graph.serialize();
+            let nodes = workflow.nodes.filter(node => node.type === "GH_LoadImage" || node.type === "GH_PreviewImage");
+            nodes = nodes.map(node => {return {'id': node.id, 'type': node.type, 'nickname': node.title??(node.type + '_' + node.id)}});
+            api.fetchApi('/custom_nodes/ComfyGH/send_workflow', {
+                method: 'POST',
+                body: JSON.stringify({ nodes })
+            }).then(response => {}).catch(error => {
+                console.error('Error:', error);
+            });
+        });
+
     },
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         if(nodeData.name === "GH_LoadImage"){
