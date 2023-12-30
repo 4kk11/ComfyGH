@@ -10,6 +10,7 @@ namespace ComfyGH.Attributes
 {
     public class ImagePreviewAttributes : GH_ResizableAttributes<Param_ComfyImage>
     {
+        public static readonly object bitmapLock = new object();
         protected override Size MinimumSize => new Size(50, 50);
 
         // This is Border Padding for changing the size.
@@ -47,7 +48,10 @@ namespace ComfyGH.Attributes
                         Bitmap image = base.Owner.LoadPreviewImage();
                         if (image != null)
                         {
-                            graphics.DrawImage(image, rect);
+                            lock(bitmapLock)
+                            {
+                                graphics.DrawImage(image, rect);
+                            }
                         }
 
                         break;

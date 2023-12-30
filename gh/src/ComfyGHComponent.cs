@@ -15,6 +15,7 @@ using System.Collections;
 using ComfyGH.Params;
 using ComfyGH.Types;
 using System.Drawing;
+using ComfyGH.Attributes;
 
 namespace ComfyGH
 {
@@ -56,7 +57,11 @@ namespace ComfyGH
                 DA.GetData(0, ref gH_ComfyImage);
                 
                 if(gH_ComfyImage != null)
-                     input_image = new ComfyImage(gH_ComfyImage.Value);
+                {
+                    //input_image = new ComfyImage(gH_ComfyImage.Value);
+                     input_image = gH_ComfyImage.Value;
+                }
+
                 DA.GetData(1, ref run);
             }
 
@@ -140,16 +145,19 @@ namespace ComfyGH
 
             private void PostQueuePrompt(RestClient restClient, ComfyImage image)
             {
-                Bitmap bitmap = image.bitmap;
-                using (MemoryStream stream = new MemoryStream())
+                lock(ImagePreviewAttributes.bitmapLock)
                 {
-                    bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
-                    byte[] bytes = stream.ToArray();
-                    string base64Image = Convert.ToBase64String(bytes);
-                    RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/queue_prompt", Method.POST);
-                    var body = new { image = base64Image };
-                    restRequest.AddJsonBody(body);
-                    restClient.Execute(restRequest);
+                    Bitmap bitmap = image.bitmap;
+                    using (MemoryStream stream = new MemoryStream())
+                    {
+                        bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                        byte[] bytes = stream.ToArray();
+                        string base64Image = Convert.ToBase64String(bytes);
+                        RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/queue_prompt", Method.POST);
+                        var body = new { image = base64Image };
+                        restRequest.AddJsonBody(body);
+                        restClient.Execute(restRequest);
+                    }
                 }
             }
 
