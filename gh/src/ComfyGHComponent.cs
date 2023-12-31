@@ -17,6 +17,10 @@ using ComfyGH.Types;
 using System.Drawing;
 using ComfyGH.Attributes;
 using Newtonsoft.Json.Linq;
+using Grasshopper.Kernel.Parameters;
+using Rhino;
+using System.Linq;
+using Grasshopper.Kernel.Geometry;
 
 namespace ComfyGH
 {
@@ -34,6 +38,7 @@ namespace ComfyGH
         {
             pManager.AddParameter(new Param_ComfyImage(), "Image", "Image", "", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Run", "Run", "", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("UpdateParams", "UpdateParams", "", GH_ParamAccess.item);
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -41,10 +46,24 @@ namespace ComfyGH
             pManager.AddTextParameter("Output", "Output", "", GH_ParamAccess.item);
         }
 
-        protected override async void BeforeSolveInstance()
+        private List<ComfyNode> nodes;
+        protected override async void SolveInstance(IGH_DataAccess DA)
         {
             Console.WriteLine("BeforeSolveInstance");
+            bool updateParams = false;
+            DA.GetData(2, ref updateParams);
+            if(updateParams)
+            {
+                var nodes = await GetNodes();
+                this.nodes = nodes;
+                OnPingDocument().ScheduleSolution(1, SolutionCallback);
+            }
 
+            base.SolveInstance(DA);
+        }
+
+        private async Task<List<ComfyNode>> GetNodes()
+        {
             using (ClientWebSocket client = new ClientWebSocket())
             {
                 // connect to websocket server
@@ -76,26 +95,78 @@ namespace ComfyGH
                     break;
                 }
 
-                var nodes = ((JArray)data["nodes"]).ToObject<List<Dictionary<string, object>>>();
-                foreach(var node in nodes)
-                {
-                    Console.WriteLine(node["id"]);
-                    Console.WriteLine(node["type"]);
-                    Console.WriteLine(node["nickname"]);
-                }
+                var nodes = ((JArray)data["nodes"]).ToObject<List<ComfyNode>>();
 
                 await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                return nodes;
             }
-
-
-            base.BeforeSolveInstance();
         }
 
-        
-        protected override void SolveInstance(IGH_DataAccess DA)
-        {
+        private Dictionary<string, IGH_Param> nodeIdParamPairs = new Dictionary<string, IGH_Param>();
 
-            base.SolveInstance(DA);
+        private void UpdateParameters()
+        {
+            GH_ComponentParamServer.IGH_SyncObject sync_data = base.Params.EmitSyncObject();
+
+            // Unregist
+            Dictionary<string, IEnumerable<IGH_Param>> idSourcesPairs = new Dictionary<string, IEnumerable<IGH_Param>>();
+            foreach(var id in nodeIdParamPairs.Keys)
+            {
+                var param = nodeIdParamPairs[id];
+                idSourcesPairs.Add(id, param.Sources.ToList()); // copy sources list
+                Params.UnregisterInputParameter(param);
+                nodeIdParamPairs.Remove(id);
+            }
+            
+            // Regist
+            foreach(var node in this.nodes)
+            {
+                var nickname = node.Nickname;
+                var type = node.Type;
+                IGH_Param param = null;
+
+                switch(type){
+                    case "GH_LoadImage":
+                        param = new Param_ComfyImage();
+                        break;
+                    case "GH_PreviewImage":
+                        param = new Param_String();
+                        break;
+                    default:
+                        continue;
+                }
+
+                param.Name = nickname;
+                param.NickName = nickname;
+                param.Access = GH_ParamAccess.tree;
+                param.Optional = true;
+
+                nodeIdParamPairs.Add(node.Id, param);
+                Params.RegisterInputParam(param);
+            }
+            
+            // Restoration sources
+            foreach(var id in nodeIdParamPairs.Keys)
+            {
+                var param = nodeIdParamPairs[id];
+                if(idSourcesPairs.ContainsKey(id))
+                {
+                    var sources = idSourcesPairs[id];
+                    foreach(var source in sources)
+                    {
+                        param.AddSource(source);
+                    }
+                }
+            }
+
+            base.Params.Sync(sync_data);
+            OnAttributesChanged();
+        }
+
+        private void SolutionCallback(GH_Document doc)
+        {
+            this.UpdateParameters();
+            ExpireSolution(false);
         }
 
         private class ComfyWorker : WorkerInstance
@@ -238,5 +309,17 @@ namespace ComfyGH
 
         [JsonProperty("data")]
         public Dictionary<string, object> Data { get; set; }
+    }
+
+    public class ComfyNode
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; }
+
+        [JsonProperty("type")]
+        public string Type { get; set; }
+        
+        [JsonProperty("nickname")]
+        public string Nickname { get; set; }
     }
 }
