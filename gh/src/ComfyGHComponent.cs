@@ -102,7 +102,8 @@ namespace ComfyGH
             }
         }
 
-        private Dictionary<string, IGH_Param> nodeIdParamPairs = new Dictionary<string, IGH_Param>();
+        private Dictionary<string, IGH_Param> nodeIdInputParamPairs = new Dictionary<string, IGH_Param>();
+        private Dictionary<string, IGH_Param> nodeIdOutputParamPairs = new Dictionary<string, IGH_Param>();
 
         private void UpdateParameters()
         {
@@ -110,24 +111,35 @@ namespace ComfyGH
 
             // Unregist
             Dictionary<string, IEnumerable<IGH_Param>> idSourcesPairs = new Dictionary<string, IEnumerable<IGH_Param>>();
-            foreach(var id in nodeIdParamPairs.Keys)
+            foreach(var id in nodeIdInputParamPairs.Keys)
             {
-                var param = nodeIdParamPairs[id];
-                idSourcesPairs.Add(id, param.Sources.ToList()); // copy sources list
-                Params.UnregisterInputParameter(param);
-                nodeIdParamPairs.Remove(id);
+                var intpuParam = nodeIdInputParamPairs[id];
+                idSourcesPairs.Add(id, intpuParam.Sources.ToList()); // copy sources list
+                Params.UnregisterInputParameter(intpuParam);
+                nodeIdInputParamPairs.Remove(id);
+            }
+
+            Dictionary<string, IEnumerable<IGH_Param>> idRecipientsPairs = new Dictionary<string, IEnumerable<IGH_Param>>();
+            foreach(var id in nodeIdOutputParamPairs.Keys)
+            {
+                var outputParam = nodeIdOutputParamPairs[id];
+                idRecipientsPairs.Add(id, outputParam.Recipients.ToList());
+                Params.UnregisterOutputParameter(outputParam);
+                nodeIdOutputParamPairs.Remove(id);
             }
             
-            // Regist
+            // Regist input
             foreach(var node in this.nodes)
             {
                 var nickname = node.Nickname;
                 var type = node.Type;
-                IGH_Param param = null;
 
+                IGH_Param param;
+                bool isInput = false;
                 switch(type){
                     case "GH_LoadImage":
                         param = new Param_ComfyImage();
+                        isInput = true;
                         break;
                     case "GH_PreviewImage":
                         param = new Param_String();
@@ -138,17 +150,26 @@ namespace ComfyGH
 
                 param.Name = nickname;
                 param.NickName = nickname;
-                param.Access = GH_ParamAccess.tree;
-                param.Optional = true;
+                if(isInput)
+                {
 
-                nodeIdParamPairs.Add(node.Id, param);
-                Params.RegisterInputParam(param);
+                    param.Access = GH_ParamAccess.tree;
+                    param.Optional = true;
+                    nodeIdInputParamPairs.Add(node.Id, param);
+                    Params.RegisterInputParam(param);
+                }
+                else
+                {
+                    param.Access = GH_ParamAccess.item;
+                    nodeIdOutputParamPairs.Add(node.Id, param);
+                    Params.RegisterOutputParam(param);   
+                }
             }
             
             // Restoration sources
-            foreach(var id in nodeIdParamPairs.Keys)
+            foreach(var id in nodeIdInputParamPairs.Keys)
             {
-                var param = nodeIdParamPairs[id];
+                var param = nodeIdInputParamPairs[id];
                 if(idSourcesPairs.ContainsKey(id))
                 {
                     var sources = idSourcesPairs[id];
@@ -158,6 +179,21 @@ namespace ComfyGH
                     }
                 }
             }
+
+            // Restoration recipients
+            foreach(var id in nodeIdOutputParamPairs.Keys)
+            {
+                var param = nodeIdOutputParamPairs[id];
+                if(idRecipientsPairs.ContainsKey(id))
+                {
+                    var recipients = idRecipientsPairs[id];
+                    foreach(var recipient in recipients)
+                    {
+                        recipient.AddSource(param);
+                    }
+                }
+            }
+
 
             base.Params.Sync(sync_data);
             OnAttributesChanged();
@@ -210,7 +246,6 @@ namespace ComfyGH
                         try
                         {
                             // Connect to websocket server
-
                             Uri serverUri = new Uri($"ws://{SERVER_ADDRESS}/ws?clientId={CLIENT_ID}");
                             await client.ConnectAsync(serverUri, CancellationToken);
 
