@@ -21,6 +21,8 @@ using Grasshopper.Kernel.Parameters;
 using Rhino;
 using System.Linq;
 using Grasshopper.Kernel.Geometry;
+using System.Web.ModelBinding;
+using System.CodeDom;
 
 namespace ComfyGH
 {
@@ -102,8 +104,8 @@ namespace ComfyGH
             }
         }
 
-        private Dictionary<string, IGH_Param> nodeIdInputParamPairs = new Dictionary<string, IGH_Param>();
-        private Dictionary<string, IGH_Param> nodeIdOutputParamPairs = new Dictionary<string, IGH_Param>();
+        private NodeDictionary InputNodeDic = new NodeDictionary();
+        private NodeDictionary OutputNodeDic = new NodeDictionary();
 
         private void UpdateParameters()
         {
@@ -111,24 +113,24 @@ namespace ComfyGH
 
             // Unregist
             Dictionary<string, IEnumerable<IGH_Param>> idSourcesPairs = new Dictionary<string, IEnumerable<IGH_Param>>();
-            foreach(var id in nodeIdInputParamPairs.Keys)
+            foreach(var id in InputNodeDic.Keys)
             {
-                var intpuParam = nodeIdInputParamPairs[id];
-                idSourcesPairs.Add(id, intpuParam.Sources.ToList()); // copy sources list
-                Params.UnregisterInputParameter(intpuParam);
-                nodeIdInputParamPairs.Remove(id);
+                IGH_Param param = InputNodeDic.GetParam(id);
+                idSourcesPairs.Add(id, param.Sources.ToList()); // copy sources list
+                Params.UnregisterInputParameter(param);
+                InputNodeDic.Remove(id);
             }
 
             Dictionary<string, IEnumerable<IGH_Param>> idRecipientsPairs = new Dictionary<string, IEnumerable<IGH_Param>>();
-            foreach(var id in nodeIdOutputParamPairs.Keys)
+            foreach(var id in OutputNodeDic.Keys)
             {
-                var outputParam = nodeIdOutputParamPairs[id];
-                idRecipientsPairs.Add(id, outputParam.Recipients.ToList());
-                Params.UnregisterOutputParameter(outputParam);
-                nodeIdOutputParamPairs.Remove(id);
+                IGH_Param param = OutputNodeDic.GetParam(id);
+                idRecipientsPairs.Add(id, param.Recipients.ToList());
+                Params.UnregisterOutputParameter(param);
+                OutputNodeDic.Remove(id);
             }
             
-            // Regist input
+            // Regist
             foreach(var node in this.nodes)
             {
                 var nickname = node.Nickname;
@@ -152,24 +154,23 @@ namespace ComfyGH
                 param.NickName = nickname;
                 if(isInput)
                 {
-
-                    param.Access = GH_ParamAccess.tree;
+                    param.Access = GH_ParamAccess.item;
                     param.Optional = true;
-                    nodeIdInputParamPairs.Add(node.Id, param);
+                    InputNodeDic.Add(node.Id, param, node);
                     Params.RegisterInputParam(param);
                 }
                 else
                 {
                     param.Access = GH_ParamAccess.item;
-                    nodeIdOutputParamPairs.Add(node.Id, param);
+                    OutputNodeDic.Add(node.Id, param, node);
                     Params.RegisterOutputParam(param);   
                 }
             }
             
             // Restoration sources
-            foreach(var id in nodeIdInputParamPairs.Keys)
+            foreach(var id in InputNodeDic.Keys)
             {
-                var param = nodeIdInputParamPairs[id];
+                var param = InputNodeDic.GetParam(id);
                 if(idSourcesPairs.ContainsKey(id))
                 {
                     var sources = idSourcesPairs[id];
@@ -181,9 +182,9 @@ namespace ComfyGH
             }
 
             // Restoration recipients
-            foreach(var id in nodeIdOutputParamPairs.Keys)
+            foreach(var id in OutputNodeDic.Keys)
             {
-                var param = nodeIdOutputParamPairs[id];
+                var param = OutputNodeDic.GetParam(id);
                 if(idRecipientsPairs.ContainsKey(id))
                 {
                     var recipients = idRecipientsPairs[id];
@@ -209,6 +210,8 @@ namespace ComfyGH
         {
             bool run;
             ComfyImage input_image;
+
+            Dictionary<string, object> inputData = new Dictionary<string, object>();
             public ComfyWorker(GH_Component _parent) : base(_parent)
             {
             }
@@ -230,6 +233,16 @@ namespace ComfyGH
                 }
 
                 DA.GetData(1, ref run);
+
+                // Get data from input node params
+                ((ComfyGHComponent)Parent).InputNodeDic.ToList().ForEach(pair => {
+                    var id = pair.Key;
+                    var nodeInfo = pair.Value;
+                    var param = nodeInfo.Parameter;
+                    object data = null;
+                    DA.GetData(param.Name, ref data);
+                    inputData.Add(id, data);
+                });
             }
 
             public override void SetData(IGH_DataAccess DA)
@@ -249,53 +262,53 @@ namespace ComfyGH
                             Uri serverUri = new Uri($"ws://{SERVER_ADDRESS}/ws?clientId={CLIENT_ID}");
                             await client.ConnectAsync(serverUri, CancellationToken);
 
-
                             // create rest client
                             RestClient restClient = new RestClient($"http://{SERVER_ADDRESS}");
                             // Send to http server
-                            PostQueuePrompt(restClient, input_image);
+                            var serializeData = SerializeData(inputData);
+                            PostQueuePrompt(restClient, serializeData);
 
                             // Receive from server
-                            while(client.State == WebSocketState.Open)
-                            {
-                                var receiveBuffer = new byte[1024];
-                                var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+                            // while(client.State == WebSocketState.Open)
+                            // {
+                            //     var receiveBuffer = new byte[1024];
+                            //     var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
 
-                                // Convet to json
-                                var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
-                                var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
+                            //     // Convet to json
+                            //     var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
+                            //     var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
 
-                                var type = comfyReceiveObject.Type;
-                                var data = comfyReceiveObject.Data;
+                            //     var type = comfyReceiveObject.Type;
+                            //     var data = comfyReceiveObject.Data;
                                 
-                                bool isClose = false;
+                            //     bool isClose = false;
 
-                                switch(type)
-                                {
-                                    case "comfygh_progress":
-                                        var value = Convert.ToInt32(data["value"]);
-                                        var max = Convert.ToInt32(data["max"]);
-                                        ReportProgress(Id, (double)value / max);
-                                        break;
+                            //     switch(type)
+                            //     {
+                            //         case "comfygh_progress":
+                            //             var value = Convert.ToInt32(data["value"]);
+                            //             var max = Convert.ToInt32(data["max"]);
+                            //             ReportProgress(Id, (double)value / max);
+                            //             break;
 
-                                    case "comfygh_executed":
-                                        ((ComfyGHComponent)Parent).output_image = (string)data["image"];
-                                        isClose = true;
-                                        break;
+                            //         case "comfygh_executed":
+                            //             ((ComfyGHComponent)Parent).output_image = (string)data["image"];
+                            //             isClose = true;
+                            //             break;
 
-                                    case "comfygh_close":
-                                        isClose = true;
-                                        break;
-                                }
+                            //         case "comfygh_close":
+                            //             isClose = true;
+                            //             break;
+                            //     }
                                 
 
-                                if (isClose)
-                                {
-                                    // Close websocket
-                                    await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                                    break;
-                                }
-                            }
+                            //     if (isClose)
+                            //     {
+                            //         // Close websocket
+                            //         await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                            //         break;
+                            //     }
+                            // }
                             
                         }
                         catch(Exception e)
@@ -310,22 +323,40 @@ namespace ComfyGH
 
             }
 
-            private void PostQueuePrompt(RestClient restClient, ComfyImage image)
+            private void PostQueuePrompt(RestClient restClient, Dictionary<string, string> data)
             {
-                lock(ImagePreviewAttributes.bitmapLock)
+                RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/queue_prompt", Method.POST);
+                restRequest.AddJsonBody(data);
+                restClient.Execute(restRequest);
+            }
+
+            private Dictionary<string, string> SerializeData(Dictionary<string, object> data)
+            {
+                var serializeData = new Dictionary<string, string>();
+                foreach(var pair in data)
                 {
-                    Bitmap bitmap = image.bitmap;
-                    using (MemoryStream stream = new MemoryStream())
+                    string key = pair.Key;
+                    object value = pair.Value;
+
+                    if(value is GH_ComfyImage image)
                     {
-                        bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
-                        byte[] bytes = stream.ToArray();
-                        string base64Image = Convert.ToBase64String(bytes);
-                        RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/queue_prompt", Method.POST);
-                        var body = new { image = base64Image };
-                        restRequest.AddJsonBody(body);
-                        restClient.Execute(restRequest);
+                        lock(ImagePreviewAttributes.bitmapLock)
+                        {
+                            using(MemoryStream stream = new MemoryStream())
+                            {
+                                image.Value.bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                                byte[] bytes = stream.ToArray();
+                                string base64Image = Convert.ToBase64String(bytes);
+                                serializeData.Add(key, base64Image);
+                            }
+                        }
+                    }
+                    else if(value is string text)
+                    {
+                        serializeData.Add(key, text);
                     }
                 }
+                return serializeData;
             }
 
         }
@@ -356,5 +387,49 @@ namespace ComfyGH
         
         [JsonProperty("nickname")]
         public string Nickname { get; set; }
+    }
+
+    public class NodeParameterInfo
+    {
+        public IGH_Param Parameter {get;}
+        public ComfyNode Node {get;}
+
+        public NodeParameterInfo(IGH_Param parameter, ComfyNode node)
+        {
+            Parameter = parameter;
+            Node = node;
+        }
+    }
+
+    public class NodeDictionary: Dictionary<string, NodeParameterInfo>
+    {
+        public void Add(string key, IGH_Param param, ComfyNode node)
+        {
+            this[key] = new NodeParameterInfo(param, node);
+        }
+
+        public bool TryGetValue(string key, out IGH_Param param, out ComfyNode node)
+        {
+            if (this.TryGetValue(key, out var value))
+            {
+                param = value.Parameter;
+                node = value.Node;
+                return true;
+            }
+
+            param = null;
+            node = null;
+            return false;
+        }
+
+        public IGH_Param GetParam(string key)
+        {
+            return this[key].Parameter;
+        }
+
+        public ComfyNode GetNode(string key)
+        {
+            return this[key].Node;
+        }
     }
 }
