@@ -82,13 +82,28 @@ class GH_PreviewImage(nodes.SaveImage):
         filename = result['ui']['images'][0]['filename']
         server.PromptServer.instance.send_sync("comfygh_executed", { "image": os.path.join(self.output_dir, filename) })
         return result
+    
+class GH_Text():
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {"text": ("STRING", {"multiline": True})}}
+    RETURN_TYPES = ("STRING", )
+    
+    CATEGORY = "ComfyGH"
+
+    def run(self, text):
+        return text
+
+
 
 NODE_CLASS_MAPPINGS = {
     'GH_LoadImage': GH_LoadImage,
     'GH_PreviewImage': GH_PreviewImage,
+    'GH_Text': GH_Text,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     'GH_LoadImage': 'GH_LoadImage',
     'GH_PreviewImage': 'GH_PreviewImage',
+    'GH_Text': 'GH_Text',
 }

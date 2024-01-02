@@ -45,6 +45,10 @@ app.registerExtension({
             nodeType.prototype.color = LGraphCanvas.node_colors.green.color;
             nodeType.prototype.bgcolor = LGraphCanvas.node_colors.green.bgcolor;
         }
+        if(nodeData.name === "GH_Text"){
+            nodeType.prototype.color = LGraphCanvas.node_colors.green.color;
+            nodeType.prototype.bgcolor = LGraphCanvas.node_colors.green.bgcolor;
+        }
     },
     loadedGraphNode(node, _) {
         if(node.type === "GH_LoadImage"){
