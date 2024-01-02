@@ -19,7 +19,37 @@ client_id = "0CB33780A6EE4767A5DDC2AD41BFE975"
 @server.PromptServer.instance.routes.post('/custom_nodes/ComfyGH/queue_prompt')
 async def upload_file(request):
     data = await request.json()
+    
     print(data)
+
+    # dataの中身は{id: string, ...}みたいな感じ
+    # これを走査して、idからノードを特定→ノードに値を渡していく。もしかしたらtypeも必要かも
+    # {id: {type: string, value: any}, ...} これがいいかも
+
+    for id in data.keys():
+        type = data[id]['type']
+        value = data[id]['value']
+        
+        if(type == 'GH_Text'):
+            server.PromptServer.instance.send_sync("update_text", {"node_id": id, "value": value})
+        elif(type == "GH_LoadImage"):
+            file_name = nodes.SOURCE_IMAGE_NAME
+            image_data = base64.b64decode(image_data)
+            input_dir = folder_paths.get_input_directory()
+            file_path = os.path.join(input_dir, file_name)
+            with open(file_path, "wb") as f:
+                f.write(image_data)
+            server.PromptServer.instance.send_sync("update_preview", { "node_id": id, "value": file_name })
+
+        
+
+
+
+
+    # dataから画像(base64string)を取得
+
+    # dataからテキストを取得
+
     # image_data = data.get('image')
     # file_name = nodes.SOURCE_IMAGE_NAME
 
