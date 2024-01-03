@@ -31,7 +31,6 @@ async def upload_file(request):
         if(type == 'GH_Text'):
             server.PromptServer.instance.send_sync("update_text", {"node_id": id, "value": value})
         elif(type == "GH_LoadImage"):
-            print("aaaa")
             file_name = nodes.SOURCE_IMAGE_NAME
             image_data = base64.b64decode(value)
             input_dir = folder_paths.get_input_directory()

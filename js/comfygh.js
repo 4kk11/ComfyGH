@@ -56,8 +56,6 @@ app.registerExtension({
             api.addEventListener("update_preview", ({ detail }) => {
                 const node_id = detail.node_id;
                 const value = detail.value;  
-                console.log(node.id);
-                console.log(node_id)
                 if(node.id != node_id) return;
                 
 
@@ -79,7 +77,7 @@ app.registerExtension({
                 const node_id = detail.node_id;
                 const value = detail.value;
 
-                if(node.id !== node_id) return;
+                if(node.id != node_id) return;
 
                 // どうやってノードにvalueを渡すか？    
 
