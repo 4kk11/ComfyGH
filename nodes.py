@@ -8,13 +8,12 @@ import numpy as np
 import nodes
 import server
 
-SOURCE_IMAGE_NAME = "comfygh.png"
 
 class GH_LoadImage:
     @classmethod
     def INPUT_TYPES(s):
         input_dir = folder_paths.get_input_directory()
-        files = [SOURCE_IMAGE_NAME]
+        files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
         return {
             "required": {
                 "image": (sorted(files), {"image_upload": True})

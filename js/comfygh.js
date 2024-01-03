@@ -50,7 +50,10 @@ app.registerExtension({
             nodeType.prototype.bgcolor = LGraphCanvas.node_colors.green.bgcolor;
         }
     },
-    loadedGraphNode(node, _) {
+    async nodeCreated(node, _) {
+        // なぜかnode.typeがundefinedになるので、少し待つ
+        await new Promise(r => setTimeout(r, 1));
+        
         if(node.type === "GH_LoadImage"){
             // update node image preview
             api.addEventListener("update_preview", ({ detail }) => {
@@ -58,6 +61,7 @@ app.registerExtension({
                 const file_name = detail.value;  
                 if(node.id != node_id) return;
                 
+                node.widgets[0].value = file_name;
 
                 const img = new Image();
                 img.onload = () => {
@@ -76,12 +80,12 @@ app.registerExtension({
             api.addEventListener("update_text", ({ detail }) => {
                 const node_id = detail.node_id;
                 const text = detail.value;
-
+                
                 if(node.id != node_id) return;
                 
                 // どうやってノードにvalueを渡すか？    
                 node.widgets[0].value = text;
             });
         }
-    },
+    }
 })

@@ -20,20 +20,20 @@ client_id = "0CB33780A6EE4767A5DDC2AD41BFE975"
 async def upload_file(request):
     data = await request.json()
 
-    # {id: {type: string, value: any}, ...}
-    print(data)
+    # data = {id: {type: string, value: any}, ...}
+
     for id in data.keys():
         type = data[id]['type']
         value = data[id]['value']
         
         if(type == 'GH_Text'):
-            # value -> テキスト
+            # value -> テキスト(string)
             # テキストを直接js側に渡す
             server.PromptServer.instance.send_sync("update_text", {"node_id": id, "value": value})
         elif(type == "GH_LoadImage"):
             # value -> 画像(base64string)
             # 画像を保存して、ファイル名をjs側に渡す
-            file_name = nodes.SOURCE_IMAGE_NAME
+            file_name =  'comfygh_' + id + '.png'
             image_data = base64.b64decode(value)
             input_dir = folder_paths.get_input_directory()
             file_path = os.path.join(input_dir, file_name)
