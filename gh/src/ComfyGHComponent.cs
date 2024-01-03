@@ -23,6 +23,7 @@ using System.Linq;
 using Grasshopper.Kernel.Geometry;
 using System.Web.ModelBinding;
 using System.CodeDom;
+using Grasshopper.Kernel.Types;
 
 namespace ComfyGH
 {
@@ -51,7 +52,6 @@ namespace ComfyGH
         private List<ComfyNode> nodes;
         protected override async void SolveInstance(IGH_DataAccess DA)
         {
-            Console.WriteLine("BeforeSolveInstance");
             bool updateParams = false;
             DA.GetData(2, ref updateParams);
             if(updateParams)
@@ -87,7 +87,6 @@ namespace ComfyGH
                     var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
                     // Convet to json
                     var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
-                    Console.WriteLine(json);
                     var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
 
                     var type = comfyReceiveObject.Type;
@@ -145,6 +144,10 @@ namespace ComfyGH
                         break;
                     case "GH_PreviewImage":
                         param = new Param_String();
+                        break;
+                    case "GH_Text":
+                        param = new Param_String();
+                        isInput = true;
                         break;
                     default:
                         continue;
@@ -211,7 +214,7 @@ namespace ComfyGH
             bool run;
             ComfyImage input_image;
 
-            Dictionary<string, object> inputData = new Dictionary<string, object>();
+            Dictionary<string, SendingData> inputData = new Dictionary<string, SendingData>();
             public ComfyWorker(GH_Component _parent) : base(_parent)
             {
             }
@@ -241,7 +244,10 @@ namespace ComfyGH
                     var param = nodeInfo.Parameter;
                     object data = null;
                     DA.GetData(param.Name, ref data);
-                    inputData.Add(id, data);
+                    inputData.Add(id, new SendingData{
+                        Type = nodeInfo.Node.Type,
+                        Data = data
+                    });
                 });
             }
 
@@ -323,40 +329,55 @@ namespace ComfyGH
 
             }
 
-            private void PostQueuePrompt(RestClient restClient, Dictionary<string, string> data)
+            private void PostQueuePrompt(RestClient restClient, Dictionary<string, SendingData> data)
             {
                 RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/queue_prompt", Method.POST);
-                restRequest.AddJsonBody(data);
+                string jsonData = JsonConvert.SerializeObject(data);
+                restRequest.AddParameter("application/json", jsonData, ParameterType.RequestBody);
                 restClient.Execute(restRequest);
             }
 
-            private Dictionary<string, string> SerializeData(Dictionary<string, object> data)
+            private Dictionary<string, SendingData> SerializeData(Dictionary<string, SendingData> data)
             {
-                var serializeData = new Dictionary<string, string>();
+                var serializeData = new Dictionary<string, SendingData>();
                 foreach(var pair in data)
                 {
                     string key = pair.Key;
-                    object value = pair.Value;
-
-                    if(value is GH_ComfyImage image)
-                    {
-                        lock(ImagePreviewAttributes.bitmapLock)
-                        {
-                            using(MemoryStream stream = new MemoryStream())
-                            {
-                                image.Value.bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
-                                byte[] bytes = stream.ToArray();
-                                string base64Image = Convert.ToBase64String(bytes);
-                                serializeData.Add(key, base64Image);
-                            }
-                        }
-                    }
-                    else if(value is string text)
-                    {
-                        serializeData.Add(key, text);
-                    }
+                    SendingData value = pair.Value;
+                    serializeData.Add(key, SerializeData(value));
                 }
                 return serializeData;
+            }
+
+            private SendingData SerializeData(SendingData data)
+            {
+                return new SendingData{
+                    Type = data.Type,
+                    Data = SerializeData(data.Data)
+                };
+            }
+
+            private string SerializeData(object data)
+            {
+                if(data is GH_ComfyImage image)
+                {
+                    lock(ImagePreviewAttributes.bitmapLock)
+                    {
+                        using(MemoryStream stream = new MemoryStream())
+                        {
+                            image.Value.bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                            byte[] bytes = stream.ToArray();
+                            string base64Image = Convert.ToBase64String(bytes);
+                            return base64Image;
+                        }
+                    }
+                }
+                else if(data is GH_String gH_String)
+                {
+                    return gH_String.Value;
+                }
+
+                return "";
             }
 
         }
@@ -368,6 +389,7 @@ namespace ComfyGH
     }
 
 
+    // ComfyUIから送られてくるデータクラス
     public class ComfyReceiveObject
     {
         [JsonProperty("type")]
@@ -377,6 +399,8 @@ namespace ComfyGH
         public Dictionary<string, object> Data { get; set; }
     }
 
+
+    // ComfyReceiveObjectのobjectの中身
     public class ComfyNode
     {
         [JsonProperty("id")]
@@ -389,6 +413,19 @@ namespace ComfyGH
         public string Nickname { get; set; }
     }
 
+
+    // ghコンポーネントに入力されたデータをConfyUIに送るためのデータクラス
+    public class SendingData
+    {
+        [JsonProperty("type")]
+        public string Type { get; set; }
+
+        [JsonProperty("value")]
+        public object Data { get; set; }
+    }
+
+    
+    // ComfyUIのノードとghコンポーネントのパラメータを紐づけるためのクラス
     public class NodeParameterInfo
     {
         public IGH_Param Parameter {get;}
@@ -401,6 +438,8 @@ namespace ComfyGH
         }
     }
 
+
+    // NodeParameterInfoとComfyUIのノードidを紐づけるためのクラス
     public class NodeDictionary: Dictionary<string, NodeParameterInfo>
     {
         public void Add(string key, IGH_Param param, ComfyNode node)

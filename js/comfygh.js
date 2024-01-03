@@ -25,7 +25,7 @@ app.registerExtension({
         api.addEventListener("get_workflow", ({detail}) => {
 
             const workflow = app.graph.serialize();
-            let nodes = workflow.nodes.filter(node => node.type === "GH_LoadImage" || node.type === "GH_PreviewImage");
+            let nodes = workflow.nodes.filter(node => node.type === "GH_LoadImage" || node.type === "GH_PreviewImage" || node.type === "GH_Text");
             nodes = nodes.map(node => {return {'id': node.id, 'type': node.type, 'nickname': node.title??(node.type + '_' + node.id)}});
             api.fetchApi('/custom_nodes/ComfyGH/send_workflow', {
                 method: 'POST',
@@ -54,11 +54,12 @@ app.registerExtension({
         if(node.type === "GH_LoadImage"){
             // update node image preview
             api.addEventListener("update_preview", ({ detail }) => {
-                const node_id = detail.id;
-                const value = detail.value;
-                console.log(node);
-
-                if(node.id !== node_id) return;
+                const node_id = detail.node_id;
+                const value = detail.value;  
+                console.log(node.id);
+                console.log(node_id)
+                if(node.id != node_id) return;
+                
 
                 const img = new Image();
                 img.onload = () => {
