@@ -35,6 +35,42 @@ app.registerExtension({
             });
         });
 
+        api.addEventListener("update_gh_loadimage", ({detail}) => {
+            const nodes = app.graph.findNodesByType("GH_LoadImage");
+            for(const node of nodes) {
+                const id = node.id;
+                const object = detail[id];
+                if(object === undefined) continue;
+
+                const file_name = object.value;
+
+                node.widgets[0].value = file_name;
+
+                const img = new Image();
+                img.onload = () => {
+                    node.imgs = [img];
+                    app.graph.setDirtyCanvas(true);
+                }
+
+                // add timestamp to prevent caching
+                const timestamp = new Date().getTime();
+                img.src = `http://127.0.0.1:8188/view?filename=${file_name}&type=input&subfolder=&timestamp=${timestamp}`;
+                node.setSizeForImage?.();
+            }
+        });
+
+        api.addEventListener("update_gh_text", ({detail}) => {
+            const nodes = app.graph.findNodesByType("GH_Text");
+            for(const node of nodes) {
+                const id = node.id;
+                const object = detail[id];
+                if(object === undefined) continue;
+
+                const text = object.value;
+                node.widgets[0].value = text;
+            }
+        });
+
     },
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         if(nodeData.name === "GH_LoadImage"){
@@ -48,44 +84,6 @@ app.registerExtension({
         if(nodeData.name === "GH_Text"){
             nodeType.prototype.color = LGraphCanvas.node_colors.green.color;
             nodeType.prototype.bgcolor = LGraphCanvas.node_colors.green.bgcolor;
-        }
-    },
-    async nodeCreated(node, _) {
-        // なぜかnode.typeがundefinedになるので、少し待つ
-        await new Promise(r => setTimeout(r, 1));
-        
-        if(node.type === "GH_LoadImage"){
-            // update node image preview
-            api.addEventListener("update_preview", ({ detail }) => {
-                const node_id = detail.node_id;
-                const file_name = detail.value;  
-                if(node.id != node_id) return;
-                
-                node.widgets[0].value = file_name;
-
-                const img = new Image();
-                img.onload = () => {
-                    node.imgs = [img];
-                    app.graph.setDirtyCanvas(true);
-                }
-
-                // add timestamp to prevent caching
-                const timestamp = new Date().getTime();
-                img.src = `http://127.0.0.1:8188/view?filename=${file_name}&type=input&subfolder=&timestamp=${timestamp}`;
-                node.setSizeForImage?.();
-            });
-        }
-
-        if(node.type === "GH_Text"){
-            api.addEventListener("update_text", ({ detail }) => {
-                const node_id = detail.node_id;
-                const text = detail.value;
-                
-                if(node.id != node_id) return;
-                
-                // どうやってノードにvalueを渡すか？    
-                node.widgets[0].value = text;
-            });
         }
     }
 })
