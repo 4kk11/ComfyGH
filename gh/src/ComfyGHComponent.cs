@@ -30,8 +30,7 @@ namespace ComfyGH
     public class ComfyGHComponent : GH_AsyncComponent
     {
         string output_image;
-        private static readonly string CLIENT_ID = "0CB33780A6EE4767A5DDC2AD41BFE975";
-        private static readonly string SERVER_ADDRESS = "127.0.0.1:8188";
+        
         public ComfyGHComponent() : base("Comfy", "Comfy", "", "ComfyGH", "Main")
         {
             BaseWorker = new ComfyWorker(this);
@@ -55,10 +54,17 @@ namespace ComfyGH
             DA.GetData(1, ref updateParams);
             if(updateParams)
             {
-                var nodes = await Helpers.GetGhNodesFromComfyUI();
-                if(nodes == null) return;
-                this.nodes = nodes;
-                OnPingDocument().ScheduleSolution(1, SolutionCallback);
+                try
+                {
+                    var nodes = await Helpers.GetGhNodesFromComfyUI();
+                    this.nodes = nodes;
+                    OnPingDocument().ScheduleSolution(1, SolutionCallback);
+                }
+                catch(Exception e)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
+                }
+                
                 return;
             }
 

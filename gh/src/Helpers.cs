@@ -19,48 +19,43 @@ namespace ComfyGH
         private static readonly string SERVER_ADDRESS = "127.0.0.1:8188";
         public static async Task<List<ComfyNode>> GetGhNodesFromComfyUI()
         {
-            try
+
+            using (ClientWebSocket client = new ClientWebSocket())
             {
-                using (ClientWebSocket client = new ClientWebSocket())
+                // connect to websocket server
+                Uri serverUri = new Uri($"ws://{SERVER_ADDRESS}/ws?clientId={CLIENT_ID}");
+                await client.ConnectAsync(serverUri, CancellationToken.None);
+
+                // create rest client
+                RestClient restClient = new RestClient($"http://{SERVER_ADDRESS}");
+                RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/get_workflow", Method.GET);
+                var body = new { text = "hello" };
+                restRequest.AddJsonBody(body);
+                await restClient.ExecuteAsync(restRequest);
+
+                // receive from server
+                Dictionary<string, object> data = null;
+                while (client.State == WebSocketState.Open)
                 {
-                    // connect to websocket server
-                    Uri serverUri = new Uri($"ws://{SERVER_ADDRESS}/ws?clientId={CLIENT_ID}");
-                    await client.ConnectAsync(serverUri, CancellationToken.None);
+                    var receiveBuffer = new byte[4096];
+                    var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+                    // Convet to json
+                    var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
+                    var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
 
-                    // create rest client
-                    RestClient restClient = new RestClient($"http://{SERVER_ADDRESS}");
-                    RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/get_workflow", Method.GET);
-                    var body = new { text = "hello" };
-                    restRequest.AddJsonBody(body);
-                    await restClient.ExecuteAsync(restRequest);
+                    var type = comfyReceiveObject.Type;
 
-                    // receive from server
-                    Dictionary<string, object> data = null;
-                    while (client.State == WebSocketState.Open)
-                    {
-                        var receiveBuffer = new byte[4096];
-                        var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
-                        // Convet to json
-                        var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
-                        var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
-
-                        var type = comfyReceiveObject.Type;
-
-                        if (type != "send_workflow") continue;
-                        data = comfyReceiveObject.Data;
-                        break;
-                    }
-
-                    var nodes = ((JArray)data["nodes"]).ToObject<List<ComfyNode>>();
-
-                    await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                    return nodes;
+                    if (type != "send_workflow") continue;
+                    data = comfyReceiveObject.Data;
+                    break;
                 }
+
+                var nodes = ((JArray)data["nodes"]).ToObject<List<ComfyNode>>();
+
+                await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                return nodes;
             }
-            catch (Exception ex)
-            {
-                return null;
-            }
+
         }
 
 
