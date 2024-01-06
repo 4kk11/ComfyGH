@@ -55,7 +55,7 @@ namespace ComfyGH
             DA.GetData(1, ref updateParams);
             if(updateParams)
             {
-                var nodes = await GetNodes();
+                var nodes = await Helpers.GetGhNodesFromComfyUI();
                 if(nodes == null) return;
                 this.nodes = nodes;
                 OnPingDocument().ScheduleSolution(1, SolutionCallback);
@@ -63,53 +63,6 @@ namespace ComfyGH
             }
 
             base.SolveInstance(DA);
-        }
-
-        private async Task<List<ComfyNode>> GetNodes()
-        {
-            try
-            {
-                using (ClientWebSocket client = new ClientWebSocket())
-                {
-                    // connect to websocket server
-                    Uri serverUri = new Uri($"ws://{SERVER_ADDRESS}/ws?clientId={CLIENT_ID}");
-                    await client.ConnectAsync(serverUri, CancellationToken.None);
-
-                    // create rest client
-                    RestClient restClient = new RestClient($"http://{SERVER_ADDRESS}");
-                    RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/get_workflow", Method.GET);
-                    var body = new { text = "hello" };
-                    restRequest.AddJsonBody(body);
-                    await restClient.ExecuteAsync(restRequest);
-
-                    // receive from server
-                    Dictionary<string, object> data = null;
-                    while (client.State == WebSocketState.Open)
-                    {
-                        var receiveBuffer = new byte[4096];
-                        var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
-                        // Convet to json
-                        var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
-                        var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
-
-                        var type = comfyReceiveObject.Type;
-
-                        if (type != "send_workflow") continue;
-                        data = comfyReceiveObject.Data;
-                        break;
-                    }
-
-                    var nodes = ((JArray)data["nodes"]).ToObject<List<ComfyNode>>();
-
-                    await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                    return nodes;
-                }
-            }
-            catch (Exception ex)
-            {
-                this.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, ex.ToString());
-                return null;
-            }
         }
 
         private NodeDictionary InputNodeDic = new NodeDictionary();
@@ -224,7 +177,7 @@ namespace ComfyGH
 
             Dictionary<string, SendingData> inputData = new Dictionary<string, SendingData>();
             public ComfyWorker(GH_Component _parent) : base(_parent)
-            {
+            {           
             }
 
             public override WorkerInstance Duplicate()
@@ -259,82 +212,105 @@ namespace ComfyGH
             {
                 if (run)
                 {
-                    using (var client = new ClientWebSocket())
+
+                    var serializeData = SerializeData(inputData);
+                    
+                    Action<Dictionary<string, object>> OnProgress = (data) => {
+                        var value = Convert.ToInt32(data["value"]);
+                        var max = Convert.ToInt32(data["max"]);
+                        ReportProgress(Id, (double)value / max);
+                    };
+
+                    Action<Dictionary<string, object>> OnExecuted = (data) => {
+                        ((ComfyGHComponent)Parent).output_image = (string)data["image"];
+                    };
+
+                    Action<Dictionary<string, object>> OnClose = (data) => {
+                        
+                    };
+
+                    
+                    try
                     {
-                        try
-                        {
-                            // Connect to websocket server
-                            Uri serverUri = new Uri($"ws://{SERVER_ADDRESS}/ws?clientId={CLIENT_ID}");
-                            await client.ConnectAsync(serverUri, CancellationToken);
-
-                            // create rest client
-                            RestClient restClient = new RestClient($"http://{SERVER_ADDRESS}");
-                            // Send to http server
-                            var serializeData = SerializeData(inputData);
-                            PostQueuePrompt(restClient, serializeData);
-
-                            //Receive from server
-                            while(client.State == WebSocketState.Open)
-                            {
-                                var receiveBuffer = new byte[1024];
-                                var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
-
-                                // Convet to json
-                                var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
-                                var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
-
-                                var type = comfyReceiveObject.Type;
-                                var data = comfyReceiveObject.Data;
-                                
-                                bool isClose = false;
-
-                                switch(type)
-                                {
-                                    case "comfygh_progress":
-                                        var value = Convert.ToInt32(data["value"]);
-                                        var max = Convert.ToInt32(data["max"]);
-                                        ReportProgress(Id, (double)value / max);
-                                        break;
-
-                                    case "comfygh_executed":
-                                        ((ComfyGHComponent)Parent).output_image = (string)data["image"];
-                                        isClose = true;
-                                        break;
-
-                                    case "comfygh_close":
-                                        isClose = true;
-                                        break;
-                                }
-                                
-
-                                if (isClose)
-                                {
-                                    // Close websocket
-                                    await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                                    break;
-                                }
-                            }
-                            
-                        }
-                        catch(Exception e)
-                        {
-                            Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
-                            return;
-                        }
+                        await Helpers.QueuePrompt(serializeData, OnProgress, OnExecuted, OnClose);
                     }
+                    catch(Exception e)
+                    {
+                        Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
+                        return;
+                    }
+
+                    #region debug
+                    // using (var client = new ClientWebSocket())
+                    // {
+                    //     try
+                    //     {
+                    //         // Connect to websocket server
+                    //         Uri serverUri = new Uri($"ws://{SERVER_ADDRESS}/ws?clientId={CLIENT_ID}");
+                    //         await client.ConnectAsync(serverUri, CancellationToken);
+
+                    //         // create rest client
+                    //         RestClient restClient = new RestClient($"http://{SERVER_ADDRESS}");
+                    //         // Send to http server
+                    //         var serializeData = SerializeData(inputData);
+                    //         PostQueuePrompt(restClient, serializeData);
+
+                    //         //Receive from server
+                    //         while(client.State == WebSocketState.Open)
+                    //         {
+                    //             var receiveBuffer = new byte[1024];
+                    //             var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+
+                    //             // Convet to json
+                    //             var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
+                    //             var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
+
+                    //             var type = comfyReceiveObject.Type;
+                    //             var data = comfyReceiveObject.Data;
+                                
+                    //             bool isClose = false;
+
+                    //             switch(type)
+                    //             {
+                    //                 case "comfygh_progress":
+                    //                     var value = Convert.ToInt32(data["value"]);
+                    //                     var max = Convert.ToInt32(data["max"]);
+                    //                     ReportProgress(Id, (double)value / max);
+                    //                     break;
+
+                    //                 case "comfygh_executed":
+                    //                     ((ComfyGHComponent)Parent).output_image = (string)data["image"];
+                    //                     isClose = true;
+                    //                     break;
+
+                    //                 case "comfygh_close":
+                    //                     isClose = true;
+                    //                     break;
+                    //             }
+                                
+
+                    //             if (isClose)
+                    //             {
+                    //                 // Close websocket
+                    //                 await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                    //                 break;
+                    //             }
+                    //         }
+                            
+                    //     }
+                    //     catch(Exception e)
+                    //     {
+                    //         Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
+                    //         return;
+                    //     }
+                    // }
+                    #endregion
                     Done();
                 }
                 
 
             }
 
-            private void PostQueuePrompt(RestClient restClient, Dictionary<string, SendingData> data)
-            {
-                RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/queue_prompt", Method.POST);
-                string jsonData = JsonConvert.SerializeObject(data);
-                restRequest.AddParameter("application/json", jsonData, ParameterType.RequestBody);
-                restClient.Execute(restRequest);
-            }
 
             private Dictionary<string, SendingData> SerializeData(Dictionary<string, SendingData> data)
             {
