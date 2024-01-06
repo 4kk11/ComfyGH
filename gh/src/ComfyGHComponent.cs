@@ -30,7 +30,7 @@ namespace ComfyGH
     public class ComfyGHComponent : GH_AsyncComponent
     {
         string output_image;
-        
+
         public ComfyGHComponent() : base("Comfy", "Comfy", "", "ComfyGH", "Main")
         {
             BaseWorker = new ComfyWorker(this);
@@ -56,7 +56,7 @@ namespace ComfyGH
             {
                 try
                 {
-                    var nodes = await Helpers.GetGhNodesFromComfyUI();
+                    var nodes = await ConnectionHelper.GetGhNodesFromComfyUI();
                     this.nodes = nodes;
                     OnPingDocument().ScheduleSolution(1, SolutionCallback);
                 }
@@ -238,7 +238,7 @@ namespace ComfyGH
                     
                     try
                     {
-                        await Helpers.QueuePrompt(serializeData, OnProgress, OnExecuted, OnClose);
+                        await ConnectionHelper.QueuePrompt(serializeData, OnProgress, OnExecuted, OnClose);
                     }
                     catch(Exception e)
                     {
@@ -246,71 +246,6 @@ namespace ComfyGH
                         return;
                     }
 
-                    #region debug
-                    // using (var client = new ClientWebSocket())
-                    // {
-                    //     try
-                    //     {
-                    //         // Connect to websocket server
-                    //         Uri serverUri = new Uri($"ws://{SERVER_ADDRESS}/ws?clientId={CLIENT_ID}");
-                    //         await client.ConnectAsync(serverUri, CancellationToken);
-
-                    //         // create rest client
-                    //         RestClient restClient = new RestClient($"http://{SERVER_ADDRESS}");
-                    //         // Send to http server
-                    //         var serializeData = SerializeData(inputData);
-                    //         PostQueuePrompt(restClient, serializeData);
-
-                    //         //Receive from server
-                    //         while(client.State == WebSocketState.Open)
-                    //         {
-                    //             var receiveBuffer = new byte[1024];
-                    //             var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
-
-                    //             // Convet to json
-                    //             var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
-                    //             var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
-
-                    //             var type = comfyReceiveObject.Type;
-                    //             var data = comfyReceiveObject.Data;
-                                
-                    //             bool isClose = false;
-
-                    //             switch(type)
-                    //             {
-                    //                 case "comfygh_progress":
-                    //                     var value = Convert.ToInt32(data["value"]);
-                    //                     var max = Convert.ToInt32(data["max"]);
-                    //                     ReportProgress(Id, (double)value / max);
-                    //                     break;
-
-                    //                 case "comfygh_executed":
-                    //                     ((ComfyGHComponent)Parent).output_image = (string)data["image"];
-                    //                     isClose = true;
-                    //                     break;
-
-                    //                 case "comfygh_close":
-                    //                     isClose = true;
-                    //                     break;
-                    //             }
-                                
-
-                    //             if (isClose)
-                    //             {
-                    //                 // Close websocket
-                    //                 await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                    //                 break;
-                    //             }
-                    //         }
-                            
-                    //     }
-                    //     catch(Exception e)
-                    //     {
-                    //         Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
-                    //         return;
-                    //     }
-                    // }
-                    #endregion
                     Done();
                 }
                 

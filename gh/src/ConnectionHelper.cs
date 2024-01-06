@@ -12,7 +12,7 @@ using System.Runtime.CompilerServices;
 
 namespace ComfyGH
 {
-    public static class Helpers
+    public static class ConnectionHelper
     {
 
         private static readonly string CLIENT_ID = "0CB33780A6EE4767A5DDC2AD41BFE975";
