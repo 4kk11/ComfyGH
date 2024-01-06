@@ -39,7 +39,6 @@ namespace ComfyGH
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
-            pManager.AddParameter(new Param_ComfyImage(), "Image", "Image", "", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Run", "Run", "", GH_ParamAccess.item);
             pManager.AddBooleanParameter("UpdateParams", "UpdateParams", "", GH_ParamAccess.item);
         }
@@ -53,7 +52,7 @@ namespace ComfyGH
         protected override async void SolveInstance(IGH_DataAccess DA)
         {
             bool updateParams = false;
-            DA.GetData(2, ref updateParams);
+            DA.GetData(1, ref updateParams);
             if(updateParams)
             {
                 var nodes = await GetNodes();
@@ -212,7 +211,6 @@ namespace ComfyGH
         private class ComfyWorker : WorkerInstance
         {
             bool run;
-            ComfyImage input_image;
 
             Dictionary<string, SendingData> inputData = new Dictionary<string, SendingData>();
             public ComfyWorker(GH_Component _parent) : base(_parent)
@@ -226,16 +224,7 @@ namespace ComfyGH
 
             public override void GetData(IGH_DataAccess DA, GH_ComponentParamServer Params)
             {
-                GH_ComfyImage gH_ComfyImage = null;
-                DA.GetData(0, ref gH_ComfyImage);
-                
-                if(gH_ComfyImage != null)
-                {
-                    //input_image = new ComfyImage(gH_ComfyImage.Value);
-                     input_image = gH_ComfyImage.Value;
-                }
-
-                DA.GetData(1, ref run);
+                DA.GetData(0, ref run);
 
                 // Get data from input node params
                 ((ComfyGHComponent)Parent).InputNodeDic.ToList().ForEach(pair => {
@@ -274,47 +263,47 @@ namespace ComfyGH
                             var serializeData = SerializeData(inputData);
                             PostQueuePrompt(restClient, serializeData);
 
-                            // Receive from server
-                            // while(client.State == WebSocketState.Open)
-                            // {
-                            //     var receiveBuffer = new byte[1024];
-                            //     var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+                            //Receive from server
+                            while(client.State == WebSocketState.Open)
+                            {
+                                var receiveBuffer = new byte[1024];
+                                var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
 
-                            //     // Convet to json
-                            //     var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
-                            //     var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
+                                // Convet to json
+                                var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
+                                var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
 
-                            //     var type = comfyReceiveObject.Type;
-                            //     var data = comfyReceiveObject.Data;
+                                var type = comfyReceiveObject.Type;
+                                var data = comfyReceiveObject.Data;
                                 
-                            //     bool isClose = false;
+                                bool isClose = false;
 
-                            //     switch(type)
-                            //     {
-                            //         case "comfygh_progress":
-                            //             var value = Convert.ToInt32(data["value"]);
-                            //             var max = Convert.ToInt32(data["max"]);
-                            //             ReportProgress(Id, (double)value / max);
-                            //             break;
+                                switch(type)
+                                {
+                                    case "comfygh_progress":
+                                        var value = Convert.ToInt32(data["value"]);
+                                        var max = Convert.ToInt32(data["max"]);
+                                        ReportProgress(Id, (double)value / max);
+                                        break;
 
-                            //         case "comfygh_executed":
-                            //             ((ComfyGHComponent)Parent).output_image = (string)data["image"];
-                            //             isClose = true;
-                            //             break;
+                                    case "comfygh_executed":
+                                        ((ComfyGHComponent)Parent).output_image = (string)data["image"];
+                                        isClose = true;
+                                        break;
 
-                            //         case "comfygh_close":
-                            //             isClose = true;
-                            //             break;
-                            //     }
+                                    case "comfygh_close":
+                                        isClose = true;
+                                        break;
+                                }
                                 
 
-                            //     if (isClose)
-                            //     {
-                            //         // Close websocket
-                            //         await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                            //         break;
-                            //     }
-                            // }
+                                if (isClose)
+                                {
+                                    // Close websocket
+                                    await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
+                                    break;
+                                }
+                            }
                             
                         }
                         catch(Exception e)
