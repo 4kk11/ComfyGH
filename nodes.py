@@ -63,6 +63,7 @@ class GH_PreviewImage(nodes.SaveImage):
         self.output_dir = folder_paths.get_temp_directory()
         self.type = "temp"
         self.prefix_append = "_temp_" + ''.join(random.choice("abcdefghijklmnopqrstupvxyz") for x in range(5))
+        self.compress_level = 4
     
     @classmethod
     def INPUT_TYPES(s):
@@ -87,11 +88,11 @@ class GH_Text():
     def INPUT_TYPES(s):
         return {"required": {"text": ("STRING", {"multiline": True})}}
     RETURN_TYPES = ("STRING", )
-    
+    FUNCTION = "run"
     CATEGORY = "ComfyGH"
 
     def run(self, text):
-        return text
+        return (text,)
 
 
 
