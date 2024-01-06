@@ -22,6 +22,19 @@ app.registerExtension({
 
         });
 
+        api.addEventListener("status", ({detail}) => {
+            const queue_remaining = detail.exec_info.queue_remaining;
+            if(queue_remaining === 0){
+                api.fetchApi('/custom_nodes/ComfyGH/close', {
+                    method: 'POST',
+                    body: JSON.stringify({ status: "done" })
+                }).then(response => {}).catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+
+        });
+
         api.addEventListener("get_workflow", ({detail}) => {
 
             const workflow = app.graph.serialize();

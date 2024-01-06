@@ -71,3 +71,9 @@ async def send_workflow(request):
     data = await request.json()
     server.PromptServer.instance.send_sync("send_workflow", data, client_id)
     return web.Response(text="ok")
+
+
+@server.PromptServer.instance.routes.post('/custom_nodes/ComfyGH/close')
+async def close(request):
+    server.PromptServer.instance.send_sync("comfygh_close", { }, client_id)
+    return web.Response(text="ok")

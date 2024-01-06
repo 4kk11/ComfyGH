@@ -102,7 +102,6 @@ namespace ComfyGH
 
                         case "comfygh_executed":
                             OnExecuted(data);
-                            isClose = true;
                             break;
 
                         case "comfygh_close":
