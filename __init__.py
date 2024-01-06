@@ -47,7 +47,7 @@ async def upload_file(request):
     server.PromptServer.instance.send_sync("update_gh_loadimage", data)
     server.PromptServer.instance.send_sync("update_gh_text", data)
         
-    #server.PromptServer.instance.send_sync("queue_prompt", { })
+    server.PromptServer.instance.send_sync("queue_prompt", { })
     return web.Response(text="ok")
     
 
