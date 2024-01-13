@@ -77,3 +77,14 @@ async def send_workflow(request):
 async def close(request):
     server.PromptServer.instance.send_sync("comfygh_close", { }, client_id)
     return web.Response(text="ok")
+
+@server.PromptServer.instance.routes.post('/custom_nodes/ComfyGH/executed')
+async def executed(request):
+    data = await request.json()
+    
+    saved_image_path = folder_paths.get_temp_directory()
+    imageName = data.get('image')
+    data['image'] = os.path.join(saved_image_path, imageName)
+    
+    server.PromptServer.instance.send_sync("comfygh_executed", data, client_id)
+    return web.Response(text="ok")

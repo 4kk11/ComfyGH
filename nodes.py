@@ -79,8 +79,6 @@ class GH_PreviewImage(nodes.SaveImage):
 
     def run(self, images, filename_prefix = "ComfyUI", prompt = None, extra_pnginfo = None):
         result = super().save_images(images, filename_prefix, prompt, extra_pnginfo)
-        filename = result['ui']['images'][0]['filename']
-        server.PromptServer.instance.send_sync("comfygh_executed", { "image": os.path.join(self.output_dir, filename) })
         return result
     
 class GH_Text():

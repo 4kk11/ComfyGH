@@ -29,7 +29,7 @@ namespace ComfyGH
 {
     public class ComfyGHComponent : GH_AsyncComponent
     {
-        string output_image;
+        Dictionary<string, string> output_images = new Dictionary<string, string>();
 
         public ComfyGHComponent() : base("Comfy", "Comfy", "", "ComfyGH", "Main")
         {
@@ -211,13 +211,23 @@ namespace ComfyGH
 
             public override void SetData(IGH_DataAccess DA)
             {
-                DA.SetData(0, ((ComfyGHComponent)Parent).output_image);
+                foreach(var output_image in ((ComfyGHComponent)Parent).output_images)
+                {
+                    var id = output_image.Key;
+                    var imagePath = output_image.Value;
+                    bool isExist = ((ComfyGHComponent)Parent).OutputNodeDic.TryGetValue(id, out var param, out var node);
+                    if(!isExist) continue;
+                    DA.SetData(param.Name, imagePath);
+                }
+                //DA.SetData(0, ((ComfyGHComponent)Parent).output_image);
             }
 
             public override async void DoWork(Action<string, double> ReportProgress, Action Done)
             {
                 if (run)
                 {
+                    // initialize
+                    ((ComfyGHComponent)Parent).output_images.Clear();
 
                     var serializeData = SerializeData(inputData);
                     
@@ -228,7 +238,10 @@ namespace ComfyGH
                     };
 
                     Action<Dictionary<string, object>> OnExecuted = (data) => {
-                        ((ComfyGHComponent)Parent).output_image = (string)data["image"];
+                        var imagePath = (string)data["image"];
+                        var nodeId = (string)data["id"];
+                        ((ComfyGHComponent)Parent).output_images[nodeId] = imagePath;                        
+                        //((ComfyGHComponent)Parent).output_image = (string)data["image"];
                     };
 
                     Action<Dictionary<string, object>> OnClose = (data) => {

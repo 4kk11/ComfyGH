@@ -106,6 +106,7 @@ namespace ComfyGH
 
                         case "comfygh_close":
                             OnClose(data);
+                            Console.WriteLine("Close!!!");
                             isClose = true;
                             break;
                     }

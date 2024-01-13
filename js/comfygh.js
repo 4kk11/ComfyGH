@@ -84,6 +84,22 @@ app.registerExtension({
             }
         });
 
+        api.addEventListener("executed", ({detail}) => {
+            const nodeId = detail.node;
+            const node = app.graph.getNodeById(nodeId);
+            if(node.type == "GH_PreviewImage")
+            {
+                const imageName = detail.output.images[0].filename;
+                api.fetchApi('/custom_nodes/ComfyGH/executed', {
+                    method: 'POST',
+                    body: JSON.stringify({ "id": nodeId, "image": imageName })
+                }).then(response => {}).catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+            
+        });
+
     },
     async beforeRegisterNodeDef(nodeType, nodeData, app) {
         if(nodeData.name === "GH_LoadImage"){
