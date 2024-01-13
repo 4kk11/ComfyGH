@@ -122,13 +122,5 @@ namespace ComfyGH
             }
         }
 
-        private static void PostQueuePrompt(RestClient restClient, Dictionary<string, SendingData> data)
-        {
-            RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/queue_prompt", Method.POST);
-            string jsonData = JsonConvert.SerializeObject(data);
-            restRequest.AddParameter("application/json", jsonData, ParameterType.RequestBody);
-            restClient.Execute(restRequest);
-        }
-
     }
 }

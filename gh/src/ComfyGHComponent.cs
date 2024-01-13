@@ -17,8 +17,6 @@ namespace ComfyGH
 {
     public class ComfyGHComponent : GH_AsyncComponent
     {
-        Dictionary<string, string> outputImagesDic = new Dictionary<string, string>();
-
         public ComfyGHComponent() : base("Comfy", "Comfy", "", "ComfyGH", "Main")
         {
             BaseWorker = new ComfyWorker(this);
@@ -35,7 +33,13 @@ namespace ComfyGH
             pManager.AddTextParameter("Output", "Output", "", GH_ParamAccess.item);
         }
 
+
+        // ComfyUIから送られてくる画像のパスを格納するためにDictionary、keyはComfyUIのノードid
+        Dictionary<string, string> outputImagesDic = new Dictionary<string, string>();
+
+        // ComfyUIのキャンバス上にあるGHノードを格納するList
         private List<ComfyNode> nodes;
+
         protected override async void SolveInstance(IGH_DataAccess DA)
         {
             bool updateParams = false;
@@ -59,8 +63,8 @@ namespace ComfyGH
             base.SolveInstance(DA);
         }
 
-        private NodeDictionary InputNodeDic = new NodeDictionary();
-        private NodeDictionary OutputNodeDic = new NodeDictionary();
+        private NodeParamMap InputNodeDic = new NodeParamMap();
+        private NodeParamMap OutputNodeDic = new NodeParamMap();
 
         private void UpdateParameters()
         {
@@ -199,6 +203,7 @@ namespace ComfyGH
 
             public override void SetData(IGH_DataAccess DA)
             {
+                // Set image path to output params from outputImagesDic
                 foreach(var output_image in ((ComfyGHComponent)Parent).outputImagesDic)
                 {
                     var id = output_image.Key;
@@ -341,12 +346,12 @@ namespace ComfyGH
 
     
     // ComfyUIのノードとghコンポーネントのパラメータを紐づけるためのクラス
-    public class NodeParameterInfo
+    public class NodeParamPair
     {
         public IGH_Param Parameter {get;}
         public ComfyNode Node {get;}
 
-        public NodeParameterInfo(IGH_Param parameter, ComfyNode node)
+        public NodeParamPair(IGH_Param parameter, ComfyNode node)
         {
             Parameter = parameter;
             Node = node;
@@ -354,12 +359,12 @@ namespace ComfyGH
     }
 
 
-    // NodeParameterInfoとComfyUIのノードidを紐づけるためのクラス
-    public class NodeDictionary: Dictionary<string, NodeParameterInfo>
+    // ComfyUIのノードidからNodeParamPairを取得できるようにするMap
+    public class NodeParamMap: Dictionary<string, NodeParamPair>
     {
         public void Add(string key, IGH_Param param, ComfyNode node)
         {
-            this[key] = new NodeParameterInfo(param, node);
+            this[key] = new NodeParamPair(param, node);
         }
 
         public bool TryGetValue(string key, out IGH_Param param, out ComfyNode node)
@@ -378,11 +383,13 @@ namespace ComfyGH
 
         public IGH_Param GetParam(string key)
         {
+            if(!this.ContainsKey(key)) return null;
             return this[key].Parameter;
         }
 
         public ComfyNode GetNode(string key)
         {
+            if(!this.ContainsKey(key)) return null;
             return this[key].Node;
         }
     }
