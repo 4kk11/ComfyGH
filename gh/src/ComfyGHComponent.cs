@@ -1,35 +1,23 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Net.WebSockets;
-using RestSharp;
 using Newtonsoft.Json;
 using Grasshopper;
 using Grasshopper.Kernel;
-using Rhino.Geometry;
 using GrasshopperAsyncComponent;
-using System.Text;
-using System.Collections;
 using ComfyGH.Params;
 using ComfyGH.Types;
-using System.Drawing;
 using ComfyGH.Attributes;
-using Newtonsoft.Json.Linq;
 using Grasshopper.Kernel.Parameters;
-using Rhino;
 using System.Linq;
-using Grasshopper.Kernel.Geometry;
-using System.Web.ModelBinding;
-using System.CodeDom;
+
 using Grasshopper.Kernel.Types;
 
 namespace ComfyGH
 {
     public class ComfyGHComponent : GH_AsyncComponent
     {
-        Dictionary<string, string> output_images = new Dictionary<string, string>();
+        Dictionary<string, string> outputImagesDic = new Dictionary<string, string>();
 
         public ComfyGHComponent() : base("Comfy", "Comfy", "", "ComfyGH", "Main")
         {
@@ -211,7 +199,7 @@ namespace ComfyGH
 
             public override void SetData(IGH_DataAccess DA)
             {
-                foreach(var output_image in ((ComfyGHComponent)Parent).output_images)
+                foreach(var output_image in ((ComfyGHComponent)Parent).outputImagesDic)
                 {
                     var id = output_image.Key;
                     var imagePath = output_image.Value;
@@ -219,7 +207,6 @@ namespace ComfyGH
                     if(!isExist) continue;
                     DA.SetData(param.Name, imagePath);
                 }
-                //DA.SetData(0, ((ComfyGHComponent)Parent).output_image);
             }
 
             public override async void DoWork(Action<string, double> ReportProgress, Action Done)
@@ -227,7 +214,7 @@ namespace ComfyGH
                 if (run)
                 {
                     // initialize
-                    ((ComfyGHComponent)Parent).output_images.Clear();
+                    ((ComfyGHComponent)Parent).outputImagesDic.Clear();
 
                     var serializeData = SerializeData(inputData);
                     
@@ -240,8 +227,7 @@ namespace ComfyGH
                     Action<Dictionary<string, object>> OnExecuted = (data) => {
                         var imagePath = (string)data["image"];
                         var nodeId = (string)data["id"];
-                        ((ComfyGHComponent)Parent).output_images[nodeId] = imagePath;                        
-                        //((ComfyGHComponent)Parent).output_image = (string)data["image"];
+                        ((ComfyGHComponent)Parent).outputImagesDic[nodeId] = imagePath;                        
                     };
 
                     Action<Dictionary<string, object>> OnClose = (data) => {
