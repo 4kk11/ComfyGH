@@ -17,7 +17,7 @@ using ComfyGH.Types;
 
 
 
-namespace ComfyGH
+namespace ComfyGH.Components
 {
     public class ViewportImageComponent : GH_Component
     {
