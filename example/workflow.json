@@ -268,7 +268,7 @@
     },
     {
       "id": 98,
-      "type": "GH_Text",
+      "type": "GH_LoadText",
       "pos": [
         -460,
         -500
@@ -292,7 +292,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "GH_Text"
+        "Node name for S&R": "GH_LoadText"
       },
       "widgets_values": [
         "wodden modern architecuture, high quality, 4k"
@@ -693,7 +693,7 @@
     },
     {
       "id": 70,
-      "type": "GH_PreviewImage",
+      "type": "GH_SendImage",
       "pos": [
         1613,
         536
@@ -714,14 +714,14 @@
       ],
       "title": "OUTPUT",
       "properties": {
-        "Node name for S&R": "GH_PreviewImage"
+        "Node name for S&R": "GH_SendImage"
       },
       "color": "#232",
       "bgcolor": "#353"
     },
     {
       "id": 101,
-      "type": "GH_PreviewImage",
+      "type": "GH_SendImage",
       "pos": [
         2133,
         116
@@ -742,7 +742,7 @@
       ],
       "title": "OUTPUT2",
       "properties": {
-        "Node name for S&R": "GH_PreviewImage"
+        "Node name for S&R": "GH_SendImage"
       },
       "color": "#232",
       "bgcolor": "#353"

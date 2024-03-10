@@ -58,7 +58,7 @@ class GH_LoadImage:
 
 
 
-class GH_PreviewImage(nodes.SaveImage):
+class GH_SendImage(nodes.SaveImage):
     def __init__(self):
         self.output_dir = folder_paths.get_temp_directory()
         self.type = "temp"
@@ -81,7 +81,7 @@ class GH_PreviewImage(nodes.SaveImage):
         result = super().save_images(images, filename_prefix, prompt, extra_pnginfo)
         return result
     
-class GH_Text():
+class GH_LoadText():
     @classmethod
     def INPUT_TYPES(s):
         return {"required": {"text": ("STRING", {"multiline": True})}}
@@ -92,16 +92,32 @@ class GH_Text():
     def run(self, text):
         return (text,)
 
+class GH_SendText():
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {"text": ("STRING", {"forceInput": True})}}
+    OUTPUT_NODE = True
+    RETURN_TYPES = ()
+    FUNCTION  = "run"
+    CATEGORY = "ComfyGH"
+
+    def run(self, text):
+        print(text)
+        # いまはUIはついていないが、"executed"を発生させたいので、"ui"をつける
+        return {"ui": {"container": [{"text": text}]}, "result": ()}
+
 
 
 NODE_CLASS_MAPPINGS = {
     'GH_LoadImage': GH_LoadImage,
-    'GH_PreviewImage': GH_PreviewImage,
-    'GH_Text': GH_Text,
+    'GH_SendImage': GH_SendImage,
+    'GH_LoadText': GH_LoadText,
+    'GH_SendText': GH_SendText,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     'GH_LoadImage': 'GH_LoadImage',
-    'GH_PreviewImage': 'GH_PreviewImage',
-    'GH_Text': 'GH_Text',
+    'GH_SendImage': 'GH_SendImage',
+    'GH_LoadText': 'GH_LoadText',
+    'GH_SendText': 'GH_SendText',
 }

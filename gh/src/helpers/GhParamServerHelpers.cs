@@ -57,12 +57,15 @@ namespace ComfyGH
                         param = new Param_ComfyImage();
                         isInput = true;
                         break;
-                    case "GH_PreviewImage":
+                    case "GH_SendImage":
                         param = new Param_String();
                         break;
-                    case "GH_Text":
+                    case "GH_LoadText":
                         param = new Param_String();
                         isInput = true;
+                        break;
+                    case "GH_SendText":
+                        param = new Param_String();
                         break;
                     default:
                         continue;

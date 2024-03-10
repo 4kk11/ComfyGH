@@ -13,6 +13,7 @@ using System.Linq;
 
 using Grasshopper.Kernel.Types;
 using Grasshopper.Kernel.Data;
+using System.Windows.Forms;
 
 namespace ComfyGH.Components
 {
@@ -174,18 +175,33 @@ namespace ComfyGH.Components
 
                     Action<Dictionary<string, object>> OnProgress = (data) =>
                     {
-                        var value = Convert.ToInt32(data["value"]);
-                        var max = Convert.ToInt32(data["max"]);
-                        ReportProgress(Id, (double)value / max);
+                        var progressType = (string)data["progress_type"];
+                        if(progressType == "number")
+                        {
+                            var value = Convert.ToInt32(data["value"]);
+                            var max = Convert.ToInt32(data["max"]);
+                            ReportProgress(Id, (double)value / max);
+                        }
+                        else if(progressType == "text")
+                        {
+                            var nodeType = (string)data["node_type"];
+                            ((ComfyGHComponent)Parent).Message = String.Format("Executing {0}...", nodeType);
+                            Rhino.RhinoApp.InvokeOnUiThread((Action)delegate
+                            {
+                                ((ComfyGHComponent)Parent).OnDisplayExpired(true);
+                            });
+                        }
+                        
                     };
 
                     Action<Dictionary<string, object>> OnExecuted = (data) =>
                     {
-                        var imagePath = (string)data["image"];
-                        var nodeId = (string)data["id"];
-                        ((ComfyGHComponent)Parent).outputImagesDic[nodeId] = imagePath;
+                        var nodeType = (string)data["node_type"];
+                        var outputData = (string)data["output_data"];
+                        var nodeId = (string)data["node_id"];
+                        ((ComfyGHComponent)Parent).outputImagesDic[nodeId] = outputData;
                         // データを受信したらoutputに逐次反映させる  
-                        ((ComfyGHComponent)Parent).ReflectOutputData(nodeId, imagePath);
+                        ((ComfyGHComponent)Parent).ReflectOutputData(nodeId, outputData);
                     };
 
                     Action<Dictionary<string, object>> OnClose = (data) =>
