@@ -113,7 +113,7 @@ namespace ComfyGH.Components
         {
             bool run;
 
-            Dictionary<string, SendingData> inputData = new Dictionary<string, SendingData>();
+            Dictionary<string, SendingNodeInputData> inputData = new Dictionary<string, SendingNodeInputData>();
             public ComfyWorker(GH_Component _parent) : base(_parent)
             {
             }
@@ -131,15 +131,23 @@ namespace ComfyGH.Components
                 ((ComfyGHComponent)Parent).InputNodeDic.ToList().ForEach(pair =>
                 {
                     var id = pair.Key;
-                    var nodeInfo = pair.Value;
-                    var param = nodeInfo.Parameter;
-                    object data = null;
+                    var link = pair.Value;
+                    var param = link.Parameter;
+                    var node = link.Node;
+
+                    IGH_Goo data = null;
                     DA.GetData(param.Name, ref data);
-                    inputData.Add(id, new SendingData
+
+                    try
                     {
-                        Type = nodeInfo.Node.Type,
-                        Data = data
-                    });
+                        SendingNodeInputData seindingData = SendingNodeInputData.Create(node.Type, data);
+                        this.inputData.Add(id, seindingData);
+                    }
+                    catch (Exception e)
+                    {
+                        Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, e.ToString());
+                        this.inputData = null;
+                    }
                 });
             }
 
@@ -158,12 +166,11 @@ namespace ComfyGH.Components
 
             public override async void DoWork(Action<string, double> ReportProgress, Action Done)
             {
-                if (run)
+                if (run && this.inputData != null)
                 {
                     // initialize
                     ((ComfyGHComponent)Parent).outputImagesDic.Clear();
 
-                    var serializeData = SerializeData(inputData);
 
                     Action<Dictionary<string, object>> OnProgress = (data) =>
                     {
@@ -188,7 +195,7 @@ namespace ComfyGH.Components
 
                     try
                     {
-                        await ConnectionHelper.QueuePrompt(serializeData, OnProgress, OnExecuted, OnClose);
+                        await ConnectionHelper.QueuePrompt(this.inputData, OnProgress, OnExecuted, OnClose);
                     }
                     catch (Exception e)
                     {
@@ -201,50 +208,6 @@ namespace ComfyGH.Components
 
             }
 
-
-            private Dictionary<string, SendingData> SerializeData(Dictionary<string, SendingData> data)
-            {
-                var serializeData = new Dictionary<string, SendingData>();
-                foreach (var pair in data)
-                {
-                    string key = pair.Key;
-                    SendingData value = pair.Value;
-                    serializeData.Add(key, SerializeData(value));
-                }
-                return serializeData;
-            }
-
-            private SendingData SerializeData(SendingData data)
-            {
-                return new SendingData
-                {
-                    Type = data.Type,
-                    Data = SerializeData(data.Data)
-                };
-            }
-
-            private string SerializeData(object data)
-            {
-                if (data is GH_ComfyImage image)
-                {
-                    lock (ImagePreviewAttributes.bitmapLock)
-                    {
-                        using (MemoryStream stream = new MemoryStream())
-                        {
-                            image.Value.bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
-                            byte[] bytes = stream.ToArray();
-                            string base64Image = Convert.ToBase64String(bytes);
-                            return base64Image;
-                        }
-                    }
-                }
-                else if (data is GH_String gH_String)
-                {
-                    return gH_String.Value;
-                }
-
-                return "";
-            }
 
         }
 
