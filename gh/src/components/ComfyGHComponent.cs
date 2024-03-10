@@ -181,11 +181,12 @@ namespace ComfyGH.Components
 
                     Action<Dictionary<string, object>> OnExecuted = (data) =>
                     {
-                        var imagePath = (string)data["image"];
-                        var nodeId = (string)data["id"];
-                        ((ComfyGHComponent)Parent).outputImagesDic[nodeId] = imagePath;
+                        var nodeType = (string)data["node_type"];
+                        var outputData = (string)data["output_data"];
+                        var nodeId = (string)data["node_id"];
+                        ((ComfyGHComponent)Parent).outputImagesDic[nodeId] = outputData;
                         // データを受信したらoutputに逐次反映させる  
-                        ((ComfyGHComponent)Parent).ReflectOutputData(nodeId, imagePath);
+                        ((ComfyGHComponent)Parent).ReflectOutputData(nodeId, outputData);
                     };
 
                     Action<Dictionary<string, object>> OnClose = (data) =>

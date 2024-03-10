@@ -82,9 +82,11 @@ async def close(request):
 async def executed(request):
     data = await request.json()
     
-    saved_image_path = folder_paths.get_temp_directory()
-    imageName = data.get('image')
-    data['image'] = os.path.join(saved_image_path, imageName)
+    if(data.get('node_type') == "GH_SendImage"):
+        saved_image_path = folder_paths.get_temp_directory()
+        imageName = data.get('output_data')
+        data['output_data'] = os.path.join(saved_image_path, imageName)
+
     
     server.PromptServer.instance.send_sync("comfygh_executed", data, client_id)
     return web.Response(text="ok")

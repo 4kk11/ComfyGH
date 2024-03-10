@@ -64,6 +64,9 @@ namespace ComfyGH
                         param = new Param_String();
                         isInput = true;
                         break;
+                    case "GH_SendText":
+                        param = new Param_String();
+                        break;
                     default:
                         continue;
                 }

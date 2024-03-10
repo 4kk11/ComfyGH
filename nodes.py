@@ -92,7 +92,19 @@ class GH_LoadText():
     def run(self, text):
         return (text,)
 
+class GH_SendText():
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {"text": ("STRING", {"forceInput": True})}}
+    OUTPUT_NODE = True
+    RETURN_TYPES = ()
+    FUNCTION  = "run"
+    CATEGORY = "ComfyGH"
 
+    def run(self, text):
+        print(text)
+        # いまはUIはついていないが、"executed"を発生させたいので、"ui"をつける
+        return {"ui": {"container": [{"text": text}]}, "result": ()}
 
 
 
@@ -100,10 +112,12 @@ NODE_CLASS_MAPPINGS = {
     'GH_LoadImage': GH_LoadImage,
     'GH_SendImage': GH_SendImage,
     'GH_LoadText': GH_LoadText,
+    'GH_SendText': GH_SendText,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     'GH_LoadImage': 'GH_LoadImage',
     'GH_SendImage': 'GH_SendImage',
     'GH_LoadText': 'GH_LoadText',
+    'GH_SendText': 'GH_SendText',
 }
