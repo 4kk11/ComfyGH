@@ -54,9 +54,7 @@ async def upload_file(request):
 @server.PromptServer.instance.routes.post('/custom_nodes/ComfyGH/progress')
 async def propagate_progress(request):
     data = await request.json()
-    value = data.get('value')
-    max = data.get('max')
-    server.PromptServer.instance.send_sync("comfygh_progress", { "value": value, "max": max}, client_id)
+    server.PromptServer.instance.send_sync("comfygh_progress", data, client_id)
     return web.Response(text="ok")
 
 

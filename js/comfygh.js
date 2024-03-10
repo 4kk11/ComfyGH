@@ -15,11 +15,25 @@ app.registerExtension({
             
             api.fetchApi('/custom_nodes/ComfyGH/progress', {
                 method: 'POST',
-                body: JSON.stringify({ value, max })
+                body: JSON.stringify({ "progress_type": "number", "value": value, "max": max })
             }).then(response => {}).catch(error => {
                 console.error('Error:', error);
             });
 
+        });
+
+        api.addEventListener("executing", ({detail}) => {
+            const nodeId = detail;
+            if(!nodeId) return;
+            const node = app.graph.getNodeById(nodeId);
+            const nodeType = node.title??node.type;
+            console.log(node);
+            api.fetchApi('/custom_nodes/ComfyGH/progress', {
+                method: 'POST',
+                body: JSON.stringify({"progress_type": "text", "node_type": nodeType})
+            }).then(response => {}).catch(error => {
+                console.error('Error:', error);
+            });
         });
 
         api.addEventListener("status", ({detail}) => {
