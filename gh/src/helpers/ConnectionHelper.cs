@@ -123,4 +123,38 @@ namespace ComfyGH
         }
 
     }
+
+    // ComfyUIから送られてくるデータクラス
+    public class ComfyReceiveObject
+    {
+        [JsonProperty("type")]
+        public string Type { get; set; }
+
+        [JsonProperty("data")]
+        public Dictionary<string, object> Data { get; set; }
+    }
+
+
+    // ComfyReceiveObjectのobjectの中身
+    public class ComfyNode
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; }
+
+        [JsonProperty("type")]
+        public string Type { get; set; }
+
+        [JsonProperty("nickname")]
+        public string Nickname { get; set; }
+    }
+
+    // ghコンポーネントに入力されたデータをConfyUIに送るためのデータクラス
+    public class SendingData
+    {
+        [JsonProperty("type")]
+        public string Type { get; set; }
+
+        [JsonProperty("value")]
+        public object Data { get; set; }
+    }
 }
