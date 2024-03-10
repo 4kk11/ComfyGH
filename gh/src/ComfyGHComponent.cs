@@ -12,6 +12,7 @@ using Grasshopper.Kernel.Parameters;
 using System.Linq;
 
 using Grasshopper.Kernel.Types;
+using Grasshopper.Kernel.Data;
 
 namespace ComfyGH
 {
@@ -61,6 +62,33 @@ namespace ComfyGH
             }
 
             base.SolveInstance(DA);
+
+            // 生成したデータをOutputに保持させておく
+            // これをしないと、再計算の際(F5キーとか)にデータが消えてしまう
+            foreach (var output_image in outputImagesDic)
+            {
+                var id = output_image.Key;
+                var imagePath = output_image.Value;
+                bool isExist = OutputNodeDic.TryGetValue(id, out var param, out var node);
+                if (!isExist) continue;
+                DA.SetData(param.Name, imagePath);
+            }
+        }
+
+        private void UpdateOutput(string nodeId, string imagePath)
+        {
+            Rhino.RhinoApp.InvokeOnUiThread((Action)delegate
+            {
+                bool isExist = OutputNodeDic.TryGetValue(nodeId, out var param, out var node);
+                if (!isExist) return;
+
+                var data = imagePath;
+  
+                param.ClearData();
+                param.AddVolatileData(new GH_Path(1), 0, data);
+                
+                param.Recipients[0].ExpireSolution(true);
+            });
         }
 
         private NodeParamMap InputNodeDic = new NodeParamMap();
@@ -232,11 +260,12 @@ namespace ComfyGH
                     Action<Dictionary<string, object>> OnExecuted = (data) => {
                         var imagePath = (string)data["image"];
                         var nodeId = (string)data["id"];
-                        ((ComfyGHComponent)Parent).outputImagesDic[nodeId] = imagePath;                        
+                        ((ComfyGHComponent)Parent).outputImagesDic[nodeId] = imagePath;
+                        // データを受信したらoutputを逐次更新する  
+                        ((ComfyGHComponent)Parent).UpdateOutput(nodeId, imagePath);
                     };
 
                     Action<Dictionary<string, object>> OnClose = (data) => {
-                        
                     };
 
                     
@@ -247,7 +276,6 @@ namespace ComfyGH
                     catch(Exception e)
                     {
                         Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
-                        return;
                     }
 
                     Done();

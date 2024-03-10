@@ -70,6 +70,7 @@ namespace GrasshopperAsyncComponent
         Interlocked.Increment(ref State);
         if (State == Workers.Count && SetData == 0)
         {
+          Debug.WriteLine("Done");
           Interlocked.Exchange(ref SetData, 1);
 
           // We need to reverse the workers list to set the outputs in the same order as the inputs. 
@@ -119,6 +120,7 @@ namespace GrasshopperAsyncComponent
 
     protected override void BeforeSolveInstance()
     {
+      Debug.WriteLine("State: " + State + " SetData: " + SetData);
       if (State != 0 && SetData == 1)
       {
         return;
@@ -158,7 +160,8 @@ namespace GrasshopperAsyncComponent
       // Prevents the flash of null data until the new solution is ready
       if (SetData == 1)
       {
-        base.ExpireDownStreamObjects();
+        // OnExecutedでOutputのRecipientsをExpireするので、ここでExpireする必要はない
+        //base.ExpireDownStreamObjects();
       }
     }
 
@@ -225,6 +228,7 @@ namespace GrasshopperAsyncComponent
       Tasks.Clear();
 
       Interlocked.Exchange(ref SetData, 0);
+      Debug.WriteLine("set data to 0");
 
       Message = "Done";
       OnDisplayExpired(true);
