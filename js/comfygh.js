@@ -38,7 +38,7 @@ app.registerExtension({
         api.addEventListener("get_workflow", ({detail}) => {
 
             const workflow = app.graph.serialize();
-            let nodes = workflow.nodes.filter(node => node.type === "GH_LoadImage" || node.type === "GH_PreviewImage" || node.type === "GH_Text");
+            let nodes = workflow.nodes.filter(node => node.type === "GH_LoadImage" || node.type === "GH_SendImage" || node.type === "GH_LoadText");
             nodes = nodes.map(node => {return {'id': node.id, 'type': node.type, 'nickname': node.title??(node.type + '_' + node.id)}});
             api.fetchApi('/custom_nodes/ComfyGH/send_workflow', {
                 method: 'POST',
@@ -73,7 +73,7 @@ app.registerExtension({
         });
 
         api.addEventListener("update_gh_text", ({detail}) => {
-            const nodes = app.graph.findNodesByType("GH_Text");
+            const nodes = app.graph.findNodesByType("GH_LoadText");
             for(const node of nodes) {
                 const id = node.id;
                 const object = detail[id];
@@ -87,7 +87,7 @@ app.registerExtension({
         api.addEventListener("executed", ({detail}) => {
             const nodeId = detail.node;
             const node = app.graph.getNodeById(nodeId);
-            if(node.type == "GH_PreviewImage")
+            if(node.type == "GH_SendImage")
             {
                 const imageName = detail.output.images[0].filename;
                 api.fetchApi('/custom_nodes/ComfyGH/executed', {
@@ -106,11 +106,11 @@ app.registerExtension({
             nodeType.prototype.color = LGraphCanvas.node_colors.green.color;
             nodeType.prototype.bgcolor = LGraphCanvas.node_colors.green.bgcolor;
         }
-        if(nodeData.name === "GH_PreviewImage"){
+        if(nodeData.name === "GH_SendImage"){
             nodeType.prototype.color = LGraphCanvas.node_colors.green.color;
             nodeType.prototype.bgcolor = LGraphCanvas.node_colors.green.bgcolor;
         }
-        if(nodeData.name === "GH_Text"){
+        if(nodeData.name === "GH_LoadText"){
             nodeType.prototype.color = LGraphCanvas.node_colors.green.color;
             nodeType.prototype.bgcolor = LGraphCanvas.node_colors.green.bgcolor;
         }
