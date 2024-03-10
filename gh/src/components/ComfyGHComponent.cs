@@ -34,12 +34,15 @@ namespace ComfyGH.Components
             pManager.AddTextParameter("Output", "Output", "", GH_ParamAccess.item);
         }
 
-
         // ComfyUIから送られてくる画像のパスを格納するためにDictionary、keyはComfyUIのノードid
         Dictionary<string, string> outputImagesDic = new Dictionary<string, string>();
 
         // ComfyUIのキャンバス上にあるGHノードを格納するList
-        private List<ComfyNode> nodes;
+        private List<ComfyNode> ReceivedComfyNodes;
+
+        // ComfyUIのノードとコンポーネントのパラメータを紐づけた情報
+        private ComfyNodeGhParamLookup InputNodeDic = new ComfyNodeGhParamLookup();
+        private ComfyNodeGhParamLookup OutputNodeDic = new ComfyNodeGhParamLookup();
 
         protected override async void SolveInstance(IGH_DataAccess DA)
         {
@@ -47,11 +50,12 @@ namespace ComfyGH.Components
             DA.GetData(1, ref updateParams);
             if (updateParams)
             {
+                // ComfyUIからノードを取得し、それを元にコンポーネントのinput/outputを更新する
                 try
                 {
                     var nodes = await ConnectionHelper.GetGhNodesFromComfyUI();
-                    this.nodes = nodes;
-                    OnPingDocument().ScheduleSolution(1, SolutionCallback);
+                    this.ReceivedComfyNodes = nodes;
+                    OnPingDocument().ScheduleSolution(1, UpdateParameters);
                 }
                 catch (Exception e)
                 {
@@ -75,114 +79,36 @@ namespace ComfyGH.Components
             }
         }
 
-        private void SolutionCallback(GH_Document doc)
+        private void UpdateParameters(GH_Document doc)
         {
-            this.UpdateParamServer();
+            // ConfyUIから受け取ったノード情報を元に、コンポーネントのinput/outputを更新する
+            GhParamServerHelpers.UpdateParamServer(this.Params, this.ReceivedComfyNodes, this.InputNodeDic, this.OutputNodeDic);
+            this.OnAttributesChanged();
             ExpireSolution(false);
         }
 
-        private ComfyNodeGhParamLookup InputNodeDic = new ComfyNodeGhParamLookup();
-        private ComfyNodeGhParamLookup OutputNodeDic = new ComfyNodeGhParamLookup();
-
-        private void UpdateParamServer()
+        private void ReflectOutputData(string nodeId, string imagePath)
         {
-            GH_ComponentParamServer.IGH_SyncObject sync_data = base.Params.EmitSyncObject();
-
-            // Unregist
-            Dictionary<string, IEnumerable<IGH_Param>> idSourcesPairs = new Dictionary<string, IEnumerable<IGH_Param>>();
-            foreach (var id in InputNodeDic.Keys)
+            // outputのParamにデータを反映させる
+            Rhino.RhinoApp.InvokeOnUiThread((Action)delegate
             {
-                IGH_Param param = InputNodeDic.GetParam(id);
-                idSourcesPairs.Add(id, param.Sources.ToList()); // copy sources list
-                Params.UnregisterInputParameter(param);
-                InputNodeDic.Remove(id);
-            }
+                bool isExist = this.OutputNodeDic.TryGetValue(nodeId, out var param, out var node);
+                if (!isExist) return;
 
-            Dictionary<string, IEnumerable<IGH_Param>> idRecipientsPairs = new Dictionary<string, IEnumerable<IGH_Param>>();
-            foreach (var id in OutputNodeDic.Keys)
-            {
-                IGH_Param param = OutputNodeDic.GetParam(id);
-                idRecipientsPairs.Add(id, param.Recipients.ToList());
-                Params.UnregisterOutputParameter(param);
-                OutputNodeDic.Remove(id);
-            }
+                var data = imagePath;
 
-            // Regist
-            foreach (var node in this.nodes)
-            {
-                var nickname = node.Nickname;
-                var type = node.Type;
+                param.ClearData();
+                param.AddVolatileData(new GH_Path(1), 0, data);
 
-                IGH_Param param;
-                bool isInput = false;
-                switch (type)
-                {
-                    case "GH_LoadImage":
-                        param = new Param_ComfyImage();
-                        isInput = true;
-                        break;
-                    case "GH_PreviewImage":
-                        param = new Param_String();
-                        break;
-                    case "GH_Text":
-                        param = new Param_String();
-                        isInput = true;
-                        break;
-                    default:
-                        continue;
-                }
-
-                param.Name = nickname;
-                param.NickName = nickname;
-                if (isInput)
-                {
-                    param.Access = GH_ParamAccess.item;
-                    param.Optional = true;
-                    InputNodeDic.Add(node.Id, param, node);
-                    Params.RegisterInputParam(param);
-                }
-                else
-                {
-                    param.Access = GH_ParamAccess.item;
-                    OutputNodeDic.Add(node.Id, param, node);
-                    Params.RegisterOutputParam(param);
-                }
-            }
-
-            // Restoration sources
-            foreach (var id in InputNodeDic.Keys)
-            {
-                var param = InputNodeDic.GetParam(id);
-                if (idSourcesPairs.ContainsKey(id))
-                {
-                    var sources = idSourcesPairs[id];
-                    foreach (var source in sources)
-                    {
-                        param.AddSource(source);
-                    }
-                }
-            }
-
-            // Restoration recipients
-            foreach (var id in OutputNodeDic.Keys)
-            {
-                var param = OutputNodeDic.GetParam(id);
-                if (idRecipientsPairs.ContainsKey(id))
-                {
-                    var recipients = idRecipientsPairs[id];
-                    foreach (var recipient in recipients)
-                    {
-                        recipient.AddSource(param);
-                    }
-                }
-            }
-
-
-            base.Params.Sync(sync_data);
-            OnAttributesChanged();
+                param.Recipients[0].ExpireSolution(true);
+            });
         }
 
+        protected override System.Drawing.Bitmap Icon => null;
 
+        public override Guid ComponentGuid => new Guid("064ee850-b34f-416e-b497-5929f70c33c1");
+
+        // 非同期処理を行うためのWorkerクラス
         private class ComfyWorker : WorkerInstance
         {
             bool run;
@@ -251,8 +177,8 @@ namespace ComfyGH.Components
                         var imagePath = (string)data["image"];
                         var nodeId = (string)data["id"];
                         ((ComfyGHComponent)Parent).outputImagesDic[nodeId] = imagePath;
-                        // データを受信したらoutputを逐次更新する  
-                        ((ComfyGHComponent)Parent).UpdateOutput(nodeId, imagePath);
+                        // データを受信したらoutputに逐次反映させる  
+                        ((ComfyGHComponent)Parent).ReflectOutputData(nodeId, imagePath);
                     };
 
                     Action<Dictionary<string, object>> OnClose = (data) =>
@@ -322,24 +248,6 @@ namespace ComfyGH.Components
 
         }
 
-        private void UpdateOutput(string nodeId, string imagePath)
-        {
-            Rhino.RhinoApp.InvokeOnUiThread((Action)delegate
-            {
-                bool isExist = OutputNodeDic.TryGetValue(nodeId, out var param, out var node);
-                if (!isExist) return;
 
-                var data = imagePath;
-
-                param.ClearData();
-                param.AddVolatileData(new GH_Path(1), 0, data);
-
-                param.Recipients[0].ExpireSolution(true);
-            });
-        }
-
-        protected override System.Drawing.Bitmap Icon => null;
-
-        public override Guid ComponentGuid => new Guid("064ee850-b34f-416e-b497-5929f70c33c1");
     }
 }
