@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
+using ComfyGH.Attributes;
 
 namespace ComfyGH
 {
@@ -27,5 +29,20 @@ namespace ComfyGH
         {
             this.bitmap = new Bitmap(image.bitmap);
         }
+
+        public string ToBase64String()
+        {
+            lock (ImagePreviewAttributes.bitmapLock)
+            {
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    this.bitmap.Save(stream, System.Drawing.Imaging.ImageFormat.Png);
+                    byte[] bytes = stream.ToArray();
+                    string base64Image = Convert.ToBase64String(bytes);
+                    return base64Image;
+                }
+            }
+        }
+        
     }
 }

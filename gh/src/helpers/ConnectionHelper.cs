@@ -9,6 +9,8 @@ using Newtonsoft.Json.Linq;
 using System.Text;
 using Newtonsoft.Json;
 using System.Runtime.CompilerServices;
+using Grasshopper.Kernel.Types;
+using ComfyGH.Types;
 
 namespace ComfyGH
 {
@@ -60,7 +62,7 @@ namespace ComfyGH
 
 
 
-        public static async Task QueuePrompt(Dictionary<string, SendingData> sendingData,
+        public static async Task QueuePrompt(Dictionary<string, SendingNodeInputData> sendingData,
                                             Action<Dictionary<string, object>> OnProgress,
                                             Action<Dictionary<string, object>> OnExecuted,
                                             Action<Dictionary<string, object>> OnClose)
@@ -149,12 +151,36 @@ namespace ComfyGH
     }
 
     // ghコンポーネントに入力されたデータをConfyUIに送るためのデータクラス
-    public class SendingData
+    public class SendingNodeInputData
     {
         [JsonProperty("type")]
-        public string Type { get; set; }
+        public string NodeType { get; set; }
 
         [JsonProperty("value")]
-        public object Data { get; set; }
+        public object InputData { get; set; }
+
+        private SendingNodeInputData(){}
+
+        static public SendingNodeInputData Create(string nodeType, IGH_Goo data)
+        {
+            object inputData;
+            switch(data)
+            {
+                case GH_ComfyImage image:
+                    inputData = image.Value.ToBase64String();
+                    break;
+                case GH_String str:
+                    inputData = str.Value;
+                    break;
+                default:
+                    throw new Exception("Invalid data input type");
+            }
+
+            return new SendingNodeInputData
+            {
+                NodeType = nodeType,
+                InputData = inputData
+            };
+        }
     }
 }
