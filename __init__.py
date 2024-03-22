@@ -91,8 +91,8 @@ async def executed(request):
     return web.Response(text="ok")
 
 
-@server.PromptServer.instance.routes.post('/custom_nodes/ComfyGH/test')
-async def test(request):
+@server.PromptServer.instance.routes.post('/custom_nodes/ComfyGH/prompt')
+async def generate_prompt(request):
     data = await request.json()
     print(f"Received JOSN: {data}")
 

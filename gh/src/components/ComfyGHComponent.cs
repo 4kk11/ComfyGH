@@ -26,6 +26,7 @@ namespace ComfyGH.Components
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
+            pManager.AddTextParameter("URL", "URL", "", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Run", "Run", "", GH_ParamAccess.item);
             pManager.AddBooleanParameter("UpdateParams", "UpdateParams", "", GH_ParamAccess.item);
         }
@@ -45,16 +46,21 @@ namespace ComfyGH.Components
         private ComfyNodeGhParamLookup InputNodeDic = new ComfyNodeGhParamLookup();
         private ComfyNodeGhParamLookup OutputNodeDic = new ComfyNodeGhParamLookup();
 
+        private string URL;
+
         protected override async void SolveInstance(IGH_DataAccess DA)
         {
+            string url = "";
             bool updateParams = false;
-            DA.GetData(1, ref updateParams);
+            DA.GetData("URL", ref url);
+            DA.GetData("UpdateParams", ref updateParams);
+            this.URL = url;
             if (updateParams)
             {
                 // ComfyUIからノードを取得し、それを元にコンポーネントのinput/outputを更新する
                 try
                 {
-                    var nodes = await ConnectionHelper.GetGhNodesFromComfyUI();
+                    var nodes = await ConnectionHelper.GetGhNodesFromComfyUI(this.URL);
                     this.ReceivedComfyNodes = nodes;
                     OnPingDocument().ScheduleSolution(1, UpdateParameters);
                 }
@@ -126,7 +132,7 @@ namespace ComfyGH.Components
 
             public override void GetData(IGH_DataAccess DA, GH_ComponentParamServer Params)
             {
-                DA.GetData(0, ref run);
+                DA.GetData("Run", ref run);
 
                 // Get data from input node params
                 ((ComfyGHComponent)Parent).InputNodeDic.ToList().ForEach(pair =>
@@ -211,7 +217,7 @@ namespace ComfyGH.Components
 
                     try
                     {
-                        await ConnectionHelper.QueuePrompt(this.inputData, OnProgress, OnExecuted, OnClose);
+                        await ConnectionHelper.QueuePrompt(((ComfyGHComponent)Parent).URL, this.inputData, OnProgress, OnExecuted, OnClose);
                     }
                     catch (Exception e)
                     {
