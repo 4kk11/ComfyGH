@@ -66,7 +66,8 @@ namespace ComfyGH
         public static async Task QueuePrompt(string url,
                                             Dictionary<string, SendingNodeInputData> sendingData,
                                             Action<Dictionary<string, object>> OnProgress,
-                                            Action<Dictionary<string, object>> OnExecuted,
+                                            Action<Dictionary<string, object>> OnReceivedImage,
+                                            Action<Dictionary<string, object>> OnReceivedMesh,
                                             Action<Dictionary<string, object>> OnClose)
         {
             using (var client = new ClientWebSocket())
@@ -85,14 +86,22 @@ namespace ComfyGH
                 restClient.Execute(restRequest);
 
                 //Receive from server
+                var receivedData = new List<byte>();
                 while (client.State == WebSocketState.Open)
                 {
-                    var receiveBuffer = new byte[1024];
-                    var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+                    var receiveBuffer = new byte[4096];
+                    WebSocketReceiveResult result;
+                    do
+                    {
+                        result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+                        receivedData.AddRange(new ArraySegment<byte>(receiveBuffer, 0, result.Count));
+                    }while(!result.EndOfMessage);
 
                     // Convet to json
-                    var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
-                    var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
+                    var json = Encoding.UTF8.GetString(receivedData.ToArray());
+                    ComfyReceiveObject comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
+
+                    receivedData.Clear();
 
                     var type = comfyReceiveObject.Type;
                     var data = comfyReceiveObject.Data;
@@ -104,11 +113,12 @@ namespace ComfyGH
                         case "comfygh_progress":
                             OnProgress(data);
                             break;
-
-                        case "comfygh_executed":
-                            OnExecuted(data);
+                        case "gh_send_image":
+                            OnReceivedImage(data);
                             break;
-
+                        case "gh_send_mesh":
+                            OnReceivedMesh(data);
+                            break;
                         case "comfygh_close":
                             OnClose(data);
                             Console.WriteLine("Close!!!");
