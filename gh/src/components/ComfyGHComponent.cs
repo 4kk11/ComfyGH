@@ -107,7 +107,13 @@ namespace ComfyGH.Components
                 param.ClearData();
                 param.AddVolatileData(new GH_Path(1), 0, data);
 
-                param.Recipients[0].ExpireSolution(true);
+                if(param.Recipients.Count > 0)
+                {
+                    foreach (var recipient in param.Recipients)
+                    {
+                        recipient.ExpireSolution(true);
+                    }
+                }
             });
         }
 
