@@ -44,7 +44,12 @@ namespace ComfyGH.Types
         {
             if (typeof(Q).IsAssignableFrom(typeof(Bitmap)))
             {
-                target = (Q)(object)Value.bitmap;
+                target = (Q)(object)this.Value.bitmap.Clone();
+                return true;
+            }
+            else if (typeof(Q).IsAssignableFrom(typeof(ComfyImage)))
+            {
+                target = (Q)(object)this.Value.Clone();
                 return true;
             }
             return false;
@@ -55,6 +60,11 @@ namespace ComfyGH.Types
             if (source is Bitmap)
             {
                 Value = new ComfyImage((Bitmap)source);
+                return true;
+            }
+            else if (source is ComfyImage image)
+            {
+                Value = image;
                 return true;
             }
             else if(source is GH_String)

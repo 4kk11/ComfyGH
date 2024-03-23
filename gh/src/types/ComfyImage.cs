@@ -43,6 +43,21 @@ namespace ComfyGH
                 }
             }
         }
+
+        static public ComfyImage FromBase64String(string base64String)
+        {
+            byte[] bytes = Convert.FromBase64String(base64String);
+            using (MemoryStream ms = new MemoryStream(bytes))
+            {
+                Bitmap bitmap = new Bitmap(ms);
+                return new ComfyImage(bitmap);
+            }
+        }
+
+        public ComfyImage Clone()
+        {
+            return new ComfyImage(this.bitmap.Clone() as Bitmap);
+        }
         
     }
 }
