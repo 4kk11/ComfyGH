@@ -82,7 +82,6 @@ class GH_SendImage(nodes.SaveImage):
     def run(self, images, filename_prefix = "ComfyUI", prompt = None, extra_pnginfo = None, node_id = None):
 
         result = super().save_images(images, filename_prefix, prompt, extra_pnginfo)
-        node_title = prompt[node_id]["_meta"]["title"]
 
         filename = result["ui"]["images"][0]["filename"]
         image_path = os.path.join(folder_paths.get_temp_directory(), filename)
@@ -90,7 +89,7 @@ class GH_SendImage(nodes.SaveImage):
             encoded_string = base64.b64encode(f.read()).decode("utf-8")
 
         client_id = server.PromptServer.instance.client_id
-        server.PromptServer.instance.send_sync("gh_send_image", {"image": encoded_string, "node_id": node_id, "node_title": node_title})
+        server.PromptServer.instance.send_sync("gh_send_image", {"image": encoded_string, "node_id": node_id})
 
         return result
     
@@ -132,13 +131,12 @@ class GH_SendMesh():
     CATEGORY = "ComfyGH"
 
     def run(self, obj_path, prompt = None, node_id = None):
-        node_title = prompt[node_id]["_meta"]["title"]
 
         with open(obj_path, "rb") as obj_file:
             encoded_string = base64.b64encode(obj_file.read()).decode("utf-8")
 
         client_id = server.PromptServer.instance.client_id
-        server.PromptServer.instance.send_sync("gh_send_mesh", {"mesh": encoded_string, "node_id": node_id, "node_title": node_title})
+        server.PromptServer.instance.send_sync("gh_send_mesh", {"mesh": encoded_string, "node_id": node_id})
 
         return ()
 
