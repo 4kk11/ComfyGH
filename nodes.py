@@ -7,6 +7,7 @@ from PIL import Image, ImageOps
 import numpy as np
 import nodes
 import server
+import base64
 
 
 class GH_LoadImage:
@@ -69,7 +70,7 @@ class GH_SendImage(nodes.SaveImage):
     def INPUT_TYPES(s):
         return {"required":
                     {"images": ("IMAGE", ), },
-                "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
+                "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO", "node_id": "UNIQUE_ID"},
                 }
     
     RETURN_TYPES = ()
@@ -77,9 +78,22 @@ class GH_SendImage(nodes.SaveImage):
     OUTPUT_NODE = True
     CATEGORY = "ComfyGH"
 
-    def run(self, images, filename_prefix = "ComfyUI", prompt = None, extra_pnginfo = None):
+
+    def run(self, images, filename_prefix = "ComfyUI", prompt = None, extra_pnginfo = None, node_id = None):
+
         result = super().save_images(images, filename_prefix, prompt, extra_pnginfo)
+        node_title = prompt[node_id]["_meta"]["title"]
+
+        filename = result["ui"]["images"][0]["filename"]
+        image_path = os.path.join(folder_paths.get_temp_directory(), filename)
+        with open(image_path, "rb") as f:
+            encoded_string = base64.b64encode(f.read()).decode("utf-8")
+
+        client_id = server.PromptServer.instance.client_id
+        server.PromptServer.instance.send_sync("gh_send_image", {"image": encoded_string, "node_id": node_id, "node_title": node_title})
+
         return result
+    
     
 class GH_LoadText():
     @classmethod
@@ -107,12 +121,34 @@ class GH_SendText():
         return {"ui": {"container": [{"text": text}]}, "result": ()}
 
 
+class GH_SendMesh():
+    @classmethod
+    def INPUT_TYPES(s):
+        return {"required": {"obj_path": ("STRING", {"forceInput": True})},
+                "hidden": {"prompt": "PROMPT", "node_id": "UNIQUE_ID"}}
+    OUTPUT_NODE = True
+    RETURN_TYPES = ()
+    FUNCTION  = "run"
+    CATEGORY = "ComfyGH"
+
+    def run(self, obj_path, prompt = None, node_id = None):
+        node_title = prompt[node_id]["_meta"]["title"]
+
+        with open(obj_path, "rb") as obj_file:
+            encoded_string = base64.b64encode(obj_file.read()).decode("utf-8")
+
+        client_id = server.PromptServer.instance.client_id
+        server.PromptServer.instance.send_sync("gh_send_mesh", {"mesh": encoded_string, "node_id": node_id, "node_title": node_title})
+
+        return ()
+
 
 NODE_CLASS_MAPPINGS = {
     'GH_LoadImage': GH_LoadImage,
     'GH_SendImage': GH_SendImage,
     'GH_LoadText': GH_LoadText,
     'GH_SendText': GH_SendText,
+    'GH_SendMesh': GH_SendMesh,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -120,4 +156,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'GH_SendImage': 'GH_SendImage',
     'GH_LoadText': 'GH_LoadText',
     'GH_SendText': 'GH_SendText',
+    'GH_SendMesh': 'GH_SendMesh',
 }

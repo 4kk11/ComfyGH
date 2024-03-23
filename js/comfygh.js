@@ -27,7 +27,7 @@ app.registerExtension({
             if(!nodeId) return;
             const node = app.graph.getNodeById(nodeId);
             const nodeType = node.title??node.type;
-            console.log(node);
+            //console.log(node);
             api.fetchApi('/custom_nodes/ComfyGH/progress', {
                 method: 'POST',
                 body: JSON.stringify({"progress_type": "text", "node_type": nodeType})
@@ -52,7 +52,7 @@ app.registerExtension({
         api.addEventListener("get_workflow", ({detail}) => {
 
             const workflow = app.graph.serialize();
-            let nodes = workflow.nodes.filter(node => node.type === "GH_LoadImage" || node.type === "GH_SendImage" || node.type === "GH_LoadText" || node.type == "GH_SendText");
+            let nodes = workflow.nodes.filter(node => node.type === "GH_LoadImage" || node.type === "GH_SendImage" || node.type === "GH_LoadText" || node.type == "GH_SendText" || node.type == "GH_SendMesh");
             nodes = nodes.map(node => {return {'id': node.id, 'type': node.type, 'nickname': node.title??(node.type + '_' + node.id)}});
             api.fetchApi('/custom_nodes/ComfyGH/send_workflow', {
                 method: 'POST',
@@ -139,6 +139,10 @@ app.registerExtension({
             nodeType.prototype.bgcolor = LGraphCanvas.node_colors.green.bgcolor;
         }
         if(nodeData.name === "GH_SendText"){
+            nodeType.prototype.color = LGraphCanvas.node_colors.green.color;
+            nodeType.prototype.bgcolor = LGraphCanvas.node_colors.green.bgcolor;
+        }
+        if(nodeData.name === "GH_SendMesh"){
             nodeType.prototype.color = LGraphCanvas.node_colors.green.color;
             nodeType.prototype.bgcolor = LGraphCanvas.node_colors.green.bgcolor;
         }
