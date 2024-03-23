@@ -19,17 +19,18 @@ namespace ComfyGH
 
         private static readonly string CLIENT_ID = "0CB33780A6EE4767A5DDC2AD41BFE975";
         private static readonly string SERVER_ADDRESS = "127.0.0.1:8188";
-        public static async Task<List<ComfyNode>> GetGhNodesFromComfyUI()
+        public static async Task<List<ComfyNode>> GetGhNodesFromComfyUI(string url)
         {
 
             using (ClientWebSocket client = new ClientWebSocket())
             {
                 // connect to websocket server
-                Uri serverUri = new Uri($"ws://{SERVER_ADDRESS}/ws?clientId={CLIENT_ID}");
+                string address = url.Replace("http://", "");
+                Uri serverUri = new Uri($"ws://{address}/ws?clientId={CLIENT_ID}");
                 await client.ConnectAsync(serverUri, CancellationToken.None);
 
                 // create rest client
-                RestClient restClient = new RestClient($"http://{SERVER_ADDRESS}");
+                RestClient restClient = new RestClient(url);
                 RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/get_workflow", Method.GET);
                 var body = new { text = "hello" };
                 restRequest.AddJsonBody(body);
@@ -62,19 +63,22 @@ namespace ComfyGH
 
 
 
-        public static async Task QueuePrompt(Dictionary<string, SendingNodeInputData> sendingData,
+        public static async Task QueuePrompt(string url,
+                                            Dictionary<string, SendingNodeInputData> sendingData,
                                             Action<Dictionary<string, object>> OnProgress,
-                                            Action<Dictionary<string, object>> OnExecuted,
+                                            Action<Dictionary<string, object>> OnReceivedImage,
+                                            Action<Dictionary<string, object>> OnReceivedMesh,
                                             Action<Dictionary<string, object>> OnClose)
         {
             using (var client = new ClientWebSocket())
             {
                 // Connect to websocket server
-                Uri serverUri = new Uri($"ws://{SERVER_ADDRESS}/ws?clientId={CLIENT_ID}");
+                string address = url.Replace("http://", "");
+                Uri serverUri = new Uri($"ws://{address}/ws?clientId={CLIENT_ID}");
                 await client.ConnectAsync(serverUri, CancellationToken.None);
 
                 // create rest client
-                RestClient restClient = new RestClient($"http://{SERVER_ADDRESS}");
+                RestClient restClient = new RestClient(url);
                 // Send to http server
                 RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/queue_prompt", Method.POST);
                 string jsonData = JsonConvert.SerializeObject(sendingData);
@@ -82,14 +86,22 @@ namespace ComfyGH
                 restClient.Execute(restRequest);
 
                 //Receive from server
+                var receivedData = new List<byte>();
                 while (client.State == WebSocketState.Open)
                 {
-                    var receiveBuffer = new byte[1024];
-                    var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+                    var receiveBuffer = new byte[4096];
+                    WebSocketReceiveResult result;
+                    do
+                    {
+                        result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+                        receivedData.AddRange(new ArraySegment<byte>(receiveBuffer, 0, result.Count));
+                    }while(!result.EndOfMessage);
 
                     // Convet to json
-                    var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
-                    var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
+                    var json = Encoding.UTF8.GetString(receivedData.ToArray());
+                    ComfyReceiveObject comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
+
+                    receivedData.Clear();
 
                     var type = comfyReceiveObject.Type;
                     var data = comfyReceiveObject.Data;
@@ -101,11 +113,12 @@ namespace ComfyGH
                         case "comfygh_progress":
                             OnProgress(data);
                             break;
-
-                        case "comfygh_executed":
-                            OnExecuted(data);
+                        case "gh_send_image":
+                            OnReceivedImage(data);
                             break;
-
+                        case "gh_send_mesh":
+                            OnReceivedMesh(data);
+                            break;
                         case "comfygh_close":
                             OnClose(data);
                             Console.WriteLine("Close!!!");
@@ -159,12 +172,12 @@ namespace ComfyGH
         [JsonProperty("value")]
         public object InputData { get; set; }
 
-        private SendingNodeInputData(){}
+        private SendingNodeInputData() { }
 
         static public SendingNodeInputData Create(string nodeType, IGH_Goo data)
         {
             object inputData;
-            switch(data)
+            switch (data)
             {
                 case GH_ComfyImage image:
                     inputData = image.Value.ToBase64String();

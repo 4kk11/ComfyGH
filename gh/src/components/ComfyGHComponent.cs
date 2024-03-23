@@ -1,19 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using Newtonsoft.Json;
-using Grasshopper;
 using Grasshopper.Kernel;
 using GrasshopperAsyncComponent;
-using ComfyGH.Params;
-using ComfyGH.Types;
-using ComfyGH.Attributes;
-using Grasshopper.Kernel.Parameters;
 using System.Linq;
-
 using Grasshopper.Kernel.Types;
 using Grasshopper.Kernel.Data;
-using System.Windows.Forms;
+using Rhino.Geometry;
+
 
 namespace ComfyGH.Components
 {
@@ -26,6 +19,7 @@ namespace ComfyGH.Components
 
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
+            pManager.AddTextParameter("URL", "URL", "", GH_ParamAccess.item);
             pManager.AddBooleanParameter("Run", "Run", "", GH_ParamAccess.item);
             pManager.AddBooleanParameter("UpdateParams", "UpdateParams", "", GH_ParamAccess.item);
         }
@@ -35,8 +29,8 @@ namespace ComfyGH.Components
             pManager.AddTextParameter("Output", "Output", "", GH_ParamAccess.item);
         }
 
-        // ComfyUIから送られてくる画像のパスを格納するためにDictionary、keyはComfyUIのノードid
-        Dictionary<string, string> outputImagesDic = new Dictionary<string, string>();
+        // ComfyUIから送られてくる情報を格納するためにDictionary、keyはComfyUIのノードid
+        Dictionary<string, object> outputObjectsDic = new Dictionary<string, object>();
 
         // ComfyUIのキャンバス上にあるGHノードを格納するList
         private List<ComfyNode> ReceivedComfyNodes;
@@ -45,18 +39,23 @@ namespace ComfyGH.Components
         private ComfyNodeGhParamLookup InputNodeDic = new ComfyNodeGhParamLookup();
         private ComfyNodeGhParamLookup OutputNodeDic = new ComfyNodeGhParamLookup();
 
+        private string URL;
+
         protected override async void SolveInstance(IGH_DataAccess DA)
         {
+            string url = "";
             bool updateParams = false;
-            DA.GetData(1, ref updateParams);
+            DA.GetData("URL", ref url);
+            DA.GetData("UpdateParams", ref updateParams);
+            this.URL = url;
             if (updateParams)
             {
                 // ComfyUIからノードを取得し、それを元にコンポーネントのinput/outputを更新する
                 try
                 {
-                    var nodes = await ConnectionHelper.GetGhNodesFromComfyUI();
+                    var nodes = await ConnectionHelper.GetGhNodesFromComfyUI(this.URL);
                     this.ReceivedComfyNodes = nodes;
-                    OnPingDocument().ScheduleSolution(1, UpdateParameters);
+                    OnPingDocument().ScheduleSolution(1, RegistParameters);
                 }
                 catch (Exception e)
                 {
@@ -70,7 +69,7 @@ namespace ComfyGH.Components
 
             // 生成したデータをOutputに保持させておく
             // これをしないと、再計算の際(F5キーとか)にデータが消えてしまう
-            foreach (var output_image in outputImagesDic)
+            foreach (var output_image in outputObjectsDic)
             {
                 var id = output_image.Key;
                 var imagePath = output_image.Value;
@@ -80,7 +79,7 @@ namespace ComfyGH.Components
             }
         }
 
-        private void UpdateParameters(GH_Document doc)
+        private void RegistParameters(GH_Document doc)
         {
             // ConfyUIから受け取ったノード情報を元に、コンポーネントのinput/outputを更新する
             GhParamServerHelpers.UpdateParamServer(this.Params, this.ReceivedComfyNodes, this.InputNodeDic, this.OutputNodeDic);
@@ -88,7 +87,7 @@ namespace ComfyGH.Components
             ExpireSolution(false);
         }
 
-        private void ReflectOutputData(string nodeId, string imagePath)
+        private void ReflectOutputData(string nodeId, object outputData)
         {
             // outputのParamにデータを反映させる
             Rhino.RhinoApp.InvokeOnUiThread((Action)delegate
@@ -96,12 +95,18 @@ namespace ComfyGH.Components
                 bool isExist = this.OutputNodeDic.TryGetValue(nodeId, out var param, out var node);
                 if (!isExist) return;
 
-                var data = imagePath;
+                var data = outputData;
 
                 param.ClearData();
                 param.AddVolatileData(new GH_Path(1), 0, data);
 
-                param.Recipients[0].ExpireSolution(true);
+                if(param.Recipients.Count > 0)
+                {
+                    foreach (var recipient in param.Recipients)
+                    {
+                        recipient.ExpireSolution(true);
+                    }
+                }
             });
         }
 
@@ -126,7 +131,7 @@ namespace ComfyGH.Components
 
             public override void GetData(IGH_DataAccess DA, GH_ComponentParamServer Params)
             {
-                DA.GetData(0, ref run);
+                DA.GetData("Run", ref run);
 
                 // Get data from input node params
                 ((ComfyGHComponent)Parent).InputNodeDic.ToList().ForEach(pair =>
@@ -155,14 +160,14 @@ namespace ComfyGH.Components
             public override void SetData(IGH_DataAccess DA)
             {
                 // Set image path to output params from outputImagesDic
-                foreach (var output_image in ((ComfyGHComponent)Parent).outputImagesDic)
-                {
-                    var id = output_image.Key;
-                    var imagePath = output_image.Value;
-                    bool isExist = ((ComfyGHComponent)Parent).OutputNodeDic.TryGetValue(id, out var param, out var node);
-                    if (!isExist) continue;
-                    DA.SetData(param.Name, imagePath);
-                }
+                // foreach (var output_object in ((ComfyGHComponent)Parent).outputObjectsDic)
+                // {
+                //     var id = output_object.Key;
+                //     var value = output_object.Value;
+                //     bool isExist = ((ComfyGHComponent)Parent).OutputNodeDic.TryGetValue(id, out var param, out var node);
+                //     if (!isExist) continue;
+                //     DA.SetData(param.Name, value);
+                // }
             }
 
             public override async void DoWork(Action<string, double> ReportProgress, Action Done)
@@ -170,7 +175,7 @@ namespace ComfyGH.Components
                 if (run && this.inputData != null)
                 {
                     // initialize
-                    ((ComfyGHComponent)Parent).outputImagesDic.Clear();
+                    ((ComfyGHComponent)Parent).outputObjectsDic.Clear();
 
 
                     Action<Dictionary<string, object>> OnProgress = (data) =>
@@ -194,14 +199,28 @@ namespace ComfyGH.Components
                         
                     };
 
-                    Action<Dictionary<string, object>> OnExecuted = (data) =>
+                    Action<Dictionary<string, object>> OnReceivedImage = (data) =>
                     {
-                        var nodeType = (string)data["node_type"];
-                        var outputData = (string)data["output_data"];
                         var nodeId = (string)data["node_id"];
-                        ((ComfyGHComponent)Parent).outputImagesDic[nodeId] = outputData;
-                        // データを受信したらoutputに逐次反映させる  
-                        ((ComfyGHComponent)Parent).ReflectOutputData(nodeId, outputData);
+                        var nodeTitle = (string)data["node_title"];
+                        string base64string = (string)data["image"];
+
+                        ComfyImage image = ComfyImage.FromBase64String(base64string);
+
+                        ((ComfyGHComponent)Parent).outputObjectsDic[nodeId] = image;
+                        ((ComfyGHComponent)Parent).ReflectOutputData(nodeId, image);
+                    };
+
+                    Action<Dictionary<string, object>> OnReceivedMesh = (data) =>
+                    {
+                        var nodeId = (string)data["node_id"];
+                        var nodeTitle = (string)data["node_title"];
+                        string base64string = (string)data["mesh"];
+                        
+                        Mesh mesh = MeshLoader.FromBase64String(base64string);
+
+                        ((ComfyGHComponent)Parent).outputObjectsDic[nodeId] = mesh;
+                        ((ComfyGHComponent)Parent).ReflectOutputData(nodeId, mesh);
                     };
 
                     Action<Dictionary<string, object>> OnClose = (data) =>
@@ -211,11 +230,12 @@ namespace ComfyGH.Components
 
                     try
                     {
-                        await ConnectionHelper.QueuePrompt(this.inputData, OnProgress, OnExecuted, OnClose);
+                        await ConnectionHelper.QueuePrompt(((ComfyGHComponent)Parent).URL, this.inputData, OnProgress, OnReceivedImage, OnReceivedMesh, OnClose);
                     }
                     catch (Exception e)
                     {
                         Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
+                        return;
                     }
 
                     Done();
