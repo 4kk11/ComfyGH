@@ -202,7 +202,6 @@ namespace ComfyGH.Components
                     Action<Dictionary<string, object>> OnReceivedImage = (data) =>
                     {
                         var nodeId = (string)data["node_id"];
-                        var nodeTitle = (string)data["node_title"];
                         string base64string = (string)data["image"];
 
                         ComfyImage image = ComfyImage.FromBase64String(base64string);
@@ -214,7 +213,6 @@ namespace ComfyGH.Components
                     Action<Dictionary<string, object>> OnReceivedMesh = (data) =>
                     {
                         var nodeId = (string)data["node_id"];
-                        var nodeTitle = (string)data["node_title"];
                         string base64string = (string)data["mesh"];
                         
                         Mesh mesh = MeshLoader.FromBase64String(base64string);
