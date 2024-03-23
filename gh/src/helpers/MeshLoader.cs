@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using Rhino;
 using Rhino.DocObjects;
@@ -16,8 +17,6 @@ namespace ComfyGH
             string tempObjFilePath = Path.GetTempFileName();
             tempObjFilePath = Path.ChangeExtension(tempObjFilePath, ".obj");
 
-            Console.WriteLine(tempObjFilePath);
-
             try
             {
                 File.WriteAllBytes(tempObjFilePath, bytes);
@@ -33,11 +32,14 @@ namespace ComfyGH
                     doc.Dispose();
                 }
 
+                if(mesh == null)
+                    throw new Exception("Failed to load mesh");
+
                 return mesh;
             }
             catch (Exception e)
             {
-                Console.WriteLine(".objファイルの読み込みに失敗しました。");
+                Debug.WriteLine("Failed to load mesh from base64 string");
                 throw e;
             }
             finally

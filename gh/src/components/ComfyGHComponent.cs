@@ -55,7 +55,7 @@ namespace ComfyGH.Components
                 {
                     var nodes = await ConnectionHelper.GetGhNodesFromComfyUI(this.URL);
                     this.ReceivedComfyNodes = nodes;
-                    OnPingDocument().ScheduleSolution(1, UpdateParameters);
+                    OnPingDocument().ScheduleSolution(1, RegistParameters);
                 }
                 catch (Exception e)
                 {
@@ -79,7 +79,7 @@ namespace ComfyGH.Components
             }
         }
 
-        private void UpdateParameters(GH_Document doc)
+        private void RegistParameters(GH_Document doc)
         {
             // ConfyUIから受け取ったノード情報を元に、コンポーネントのinput/outputを更新する
             GhParamServerHelpers.UpdateParamServer(this.Params, this.ReceivedComfyNodes, this.InputNodeDic, this.OutputNodeDic);
@@ -160,14 +160,14 @@ namespace ComfyGH.Components
             public override void SetData(IGH_DataAccess DA)
             {
                 // Set image path to output params from outputImagesDic
-                foreach (var output_object in ((ComfyGHComponent)Parent).outputObjectsDic)
-                {
-                    var id = output_object.Key;
-                    var value = output_object.Value;
-                    bool isExist = ((ComfyGHComponent)Parent).OutputNodeDic.TryGetValue(id, out var param, out var node);
-                    if (!isExist) continue;
-                    DA.SetData(param.Name, value);
-                }
+                // foreach (var output_object in ((ComfyGHComponent)Parent).outputObjectsDic)
+                // {
+                //     var id = output_object.Key;
+                //     var value = output_object.Value;
+                //     bool isExist = ((ComfyGHComponent)Parent).OutputNodeDic.TryGetValue(id, out var param, out var node);
+                //     if (!isExist) continue;
+                //     DA.SetData(param.Name, value);
+                // }
             }
 
             public override async void DoWork(Action<string, double> ReportProgress, Action Done)
@@ -216,7 +216,7 @@ namespace ComfyGH.Components
                         var nodeId = (string)data["node_id"];
                         var nodeTitle = (string)data["node_title"];
                         string base64string = (string)data["mesh"];
-
+                        
                         Mesh mesh = MeshLoader.FromBase64String(base64string);
 
                         ((ComfyGHComponent)Parent).outputObjectsDic[nodeId] = mesh;
@@ -235,6 +235,7 @@ namespace ComfyGH.Components
                     catch (Exception e)
                     {
                         Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
+                        return;
                     }
 
                     Done();
