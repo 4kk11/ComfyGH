@@ -163,3 +163,5 @@ cython_debug/
 bin/
 obj/
 
+.DS_Store
+launchSettings.json
