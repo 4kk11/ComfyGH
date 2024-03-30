@@ -11,6 +11,7 @@ using Newtonsoft.Json;
 using System.Runtime.CompilerServices;
 using Grasshopper.Kernel.Types;
 using ComfyGH.Types;
+using System.Diagnostics;
 
 namespace ComfyGH
 {
@@ -24,12 +25,14 @@ namespace ComfyGH
             try
             {
                 RestClient restClient = new RestClient(url);
+                restClient.Timeout = 2000;
                 RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/validate_connection", Method.GET);
                 var response = restClient.Execute(restRequest);
                 return response.IsSuccessful;
             }
             catch (Exception e)
             {
+                Debug.WriteLine(e);
                 return false;
             }
         }
@@ -45,7 +48,8 @@ namespace ComfyGH
                 response = await restClient.ExecuteAsync(restRequest);
             }
             catch (Exception e)
-            {
+            {   
+                Debug.WriteLine(e);
                 throw new Exception("Failed to request in GetGhNodes");
             }
 
@@ -72,6 +76,7 @@ namespace ComfyGH
             }
             catch (Exception e)
             {
+                Debug.WriteLine(e);
                 throw new Exception("Failed to request in TranslateWorkflow");
             }
 

@@ -122,5 +122,59 @@ namespace ComfyGH
 
             parmServer.Sync(sync_data);
         }
+
+        static public bool RegistInputDynamic<T>(GH_ComponentParamServer parmServer, string name, bool optional) where T: IGH_Param
+        {
+            if(IsExistInput(parmServer, name)) return false;
+
+            GH_ComponentParamServer.IGH_SyncObject sync_data = parmServer.EmitSyncObject();
+
+            IGH_Param param = (T)Activator.CreateInstance(typeof(T));
+            param.Name = name;
+            param.NickName = name;
+            param.Access = GH_ParamAccess.item;
+            param.Optional = optional;
+
+            parmServer.RegisterInputParam(param);
+
+            parmServer.Sync(sync_data);
+            return true;
+        }
+
+        static public bool DeleteInputDynamic(GH_ComponentParamServer parmServer, string Name)
+        {
+            GH_ComponentParamServer.IGH_SyncObject sync_data = parmServer.EmitSyncObject();
+
+            bool isDeleted = false;
+
+            foreach (var input in parmServer.Input)
+            {
+                if (input.NickName == Name)
+                {
+                    parmServer.UnregisterInputParameter(input);
+                    isDeleted = true;
+                    break;
+                }
+            }
+
+            parmServer.Sync(sync_data);
+            return isDeleted;
+        }
+
+        static public bool IsExistInput(GH_ComponentParamServer parmServer, string intputName)
+        {
+
+            foreach (var input in parmServer.Input)
+            {
+                if (input.NickName == intputName)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        
     }
 }

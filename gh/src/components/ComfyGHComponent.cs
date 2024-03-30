@@ -7,6 +7,7 @@ using Grasshopper.Kernel.Types;
 using Grasshopper.Kernel.Data;
 using Rhino.Geometry;
 using Rhino.DocObjects.Tables;
+using Grasshopper.Kernel.Parameters;
 
 
 namespace ComfyGH.Components
@@ -21,12 +22,12 @@ namespace ComfyGH.Components
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddTextParameter("URL", "URL", "", GH_ParamAccess.item);
-            pManager.AddTextParameter("Workflow", "Workflow", "", GH_ParamAccess.item);
-            pManager.AddBooleanParameter("Run", "Run", "", GH_ParamAccess.item, false);
-            pManager.AddBooleanParameter("UpdateParams", "UpdateParams", "", GH_ParamAccess.item, false);
-            this.Params.Input[1].Optional = true;
-            this.Params.Input[2].Optional = true;
-            this.Params.Input[3].Optional = true;
+            // pManager.AddTextParameter("Workflow", "Workflow", "", GH_ParamAccess.item);
+            // pManager.AddBooleanParameter("Run", "Run", "", GH_ParamAccess.item, false);
+            // pManager.AddBooleanParameter("UpdateParams", "UpdateParams", "", GH_ParamAccess.item, false);
+            // this.Params.Input[1].Optional = true;
+            // this.Params.Input[2].Optional = true;
+            // this.Params.Input[3].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -49,17 +50,22 @@ namespace ComfyGH.Components
         protected override void BeforeSolveInstance()
         {
             base.BeforeSolveInstance();
+            if(GhParamServerHelpers.IsExistInput(this.Params, "URL"))
+            {
+                int sourceCount = this.Params.Input[0].Sources.Count();
+                if (sourceCount == 0)
+                {
+                    OnPingDocument().ScheduleSolution(1, DeleteInput_Workflow);
+                }
+            }    
+            
             Console.WriteLine("BeforeSolveInstance");
         }
 
         protected override async void SolveInstance(IGH_DataAccess DA)
         {
             string url = "";
-            string workflow = "";
-            bool updateParams = false;
             DA.GetData("URL", ref url);
-            DA.GetData("Workflow", ref workflow);
-            DA.GetData("UpdateParams", ref updateParams);
             this.URL = url;
 
             // 接続の検証（URL）
@@ -67,9 +73,31 @@ namespace ComfyGH.Components
             if (!isConnectionComfyGH)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Failed to connect to ComfyGH. Please install ComfyGH on ComfyUI");
+                OnPingDocument().ScheduleSolution(1, DeleteInput_Workflow);
                 return;
             }
 
+            // inputにworkflowのParamを追加する
+            // すでに存在する場合はなにもしない
+            // workflowのParamが存在しない -> 追加する
+            // 接続の検証が失敗する || URLのParamが外れる -> 削除する
+            OnPingDocument().ScheduleSolution(1, RegistInput_Workflow);
+            
+            string workflow = "";
+
+            if(!GhParamServerHelpers.IsExistInput(this.Params, "Workflow")) return;
+
+            DA.GetData("Workflow", ref workflow);
+
+            if (workflow != "")
+            {
+                Console.WriteLine("Workflow: " + workflow);
+            }
+            return;
+            
+            bool updateParams = false;
+            if(GhParamServerHelpers.IsExistInput(this.Params, "UpdateParams"))
+                DA.GetData("UpdateParams", ref updateParams);
             
             // input/outputの取得（Workflow）
             if(updateParams)
@@ -144,6 +172,34 @@ namespace ComfyGH.Components
             ExpireSolution(false);
         }
 
+        private void RegistInput_Workflow(GH_Document doc)
+        {
+            bool isRegisted = GhParamServerHelpers.RegistInputDynamic<Param_String>(this.Params, "Workflow", true);
+            if (isRegisted)
+            {
+                this.OnAttributesChanged();
+                ExpireSolution(false);
+            }
+        }
+
+        private void DeleteInput_Workflow(GH_Document doc)
+        {
+            bool isDeleted = GhParamServerHelpers.DeleteInputDynamic(this.Params, "Workflow");
+            if (isDeleted)
+            {
+                this.OnAttributesChanged();
+                ExpireSolution(false);
+            }
+        }
+
+        private void UpdateAttributes()
+        {
+            OnPingDocument().ScheduleSolution(1, (doc) => {
+                this.OnAttributesChanged();
+                ExpireSolution(false);
+            });
+        }
+
         private void ReflectOutputData(string nodeId, object outputData)
         {
             // outputのParamにデータを反映させる
@@ -188,7 +244,8 @@ namespace ComfyGH.Components
 
             public override void GetData(IGH_DataAccess DA, GH_ComponentParamServer Params)
             {
-                DA.GetData("Run", ref run);
+                if(GhParamServerHelpers.IsExistInput(Params, "Run"))
+                    DA.GetData("Run", ref run);
 
                 // Get data from input node params
                 ((ComfyGHComponent)Parent).InputNodeDic.ToList().ForEach(pair =>
