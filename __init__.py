@@ -1,6 +1,7 @@
 import os
 import shutil
 import folder_paths
+import traceback
 from .nodes import NODE_CLASS_MAPPINGS, NODE_DISPLAY_NAME_MAPPINGS
 import nodes as comfy_nodes
 
@@ -16,6 +17,41 @@ from aiohttp import web
 import asyncio
 
 client_id = "0CB33780A6EE4767A5DDC2AD41BFE975"
+
+@server.PromptServer.instance.routes.get('/custom_nodes/ComfyGH/validate_connection')
+async def validate_connection(request):
+    return web.Response(text="ok")
+
+@server.PromptServer.instance.routes.post('/custom_nodes/ComfyGH/gh_nodes')
+async def gh_nodes(request):
+    workflow_json = await request.json()
+
+    try:
+        output_json = get_gh_nodes(workflow_json)
+    except Exception as e:
+        error_detail = create_error_detail(e)
+        print(error_detail)
+        return web.json_response({"error": error_detail}, status=400)
+
+    return web.json_response(output_json)
+
+def get_gh_nodes(workflow_json):
+    nodes = workflow_json["nodes"]
+    output_json = {"nodes": []}
+
+    for node in nodes:
+        node_type = node["type"]
+        if node_type in NODE_CLASS_MAPPINGS:
+            node_dict = {}
+            node_id = node["id"]
+            node_dict["id"] = node_id
+            node_dict["type"] = node_type
+            node_dict["nickname"] = node_type + "_" + str(node_id)
+            if "title" in node:
+                node_dict["nickname"] = node["title"]
+            output_json["nodes"].append(node_dict)
+
+    return output_json
 
 @server.PromptServer.instance.routes.post('/custom_nodes/ComfyGH/queue_prompt')
 async def upload_file(request):
@@ -42,8 +78,9 @@ async def upload_file(request):
                     f.write(image_data)
                 data[id]['value'] = file_name
     except Exception as e: 
-        print(e)
-        return web.Response(text="error", status=400)
+        error_detail = create_error_detail(e)
+        print(error_detail)
+        return web.json_response({"error": error_detail}, status=400)
         
     server.PromptServer.instance.send_sync("update_gh_loadimage", data)
     server.PromptServer.instance.send_sync("update_gh_text", data)
@@ -94,13 +131,15 @@ async def executed(request):
 @server.PromptServer.instance.routes.post('/custom_nodes/ComfyGH/prompt')
 async def generate_prompt(request):
     data = await request.json()
-    print(f"Received JOSN: {data}")
 
-    data = resolve_reroute(data)
-    data = resolve_primitive(data)
-    updated_data = transform_json(data)
-
-    print(f"Updated JOSN: {updated_data}")
+    try:
+        data = resolve_reroute(data)
+        data = resolve_primitive(data)
+        updated_data = transform_json(data)
+    except Exception as e:
+        error_detail = create_error_detail(e)
+        print(error_detail)
+        return web.json_response({"error": error_detail}, status=400)
 
     return web.json_response(updated_data)
 
@@ -216,3 +255,15 @@ def resolve_primitive(input_json):
 
 
     return input_json
+
+
+def create_error_detail(e):
+    error_type = type(e).__name__
+    error_message = str(e)
+    error_traceback = traceback.format_exc()
+
+    error_details = f"error_type: {error_type}\n"
+    error_details += f"error_message: {error_message}\n"
+    error_details += f"error_traceback: {error_traceback}\n"
+
+    return error_details

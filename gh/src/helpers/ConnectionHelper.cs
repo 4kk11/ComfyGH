@@ -18,7 +18,73 @@ namespace ComfyGH
     {
 
         private static readonly string CLIENT_ID = "0CB33780A6EE4767A5DDC2AD41BFE975";
-        private static readonly string SERVER_ADDRESS = "127.0.0.1:8188";
+
+        public static bool ValidateComfyGHConnection(string url)
+        {
+            try
+            {
+                RestClient restClient = new RestClient(url);
+                RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/validate_connection", Method.GET);
+                var response = restClient.Execute(restRequest);
+                return response.IsSuccessful;
+            }
+            catch (Exception e)
+            {
+                return false;
+            }
+        }
+
+        public static async Task<List<ComfyNode>> GetGhNodes(string url, string jsonPath)
+        {
+            RestClient restClient = new RestClient(url);
+            RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/gh_nodes", Method.POST);
+            restRequest.AddParameter("application/json", File.ReadAllText(jsonPath), ParameterType.RequestBody);
+            IRestResponse response;
+            try
+            {
+                response = await restClient.ExecuteAsync(restRequest);
+            }
+            catch (Exception e)
+            {
+                throw new Exception("Failed to request in GetGhNodes");
+            }
+
+            if(!response.IsSuccessful)
+            {
+                var errorData = JObject.Parse(response.Content);
+                throw new Exception(errorData["error"].ToString());
+            }
+
+            var data = JObject.Parse(response.Content);
+            var nodes = data["nodes"].ToObject<List<ComfyNode>>();
+            return nodes;
+        }
+
+        public static async Task<string> TranslateWorkflow(string url, string workflowPath)
+        {
+            RestClient restClient = new RestClient(url);
+            RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/prompt", Method.POST);
+            restRequest.AddParameter("application/json", File.ReadAllText(workflowPath), ParameterType.RequestBody);
+            IRestResponse response;
+            try
+            {
+                response = await restClient.ExecuteAsync(restRequest);
+            }
+            catch (Exception e)
+            {
+                throw new Exception("Failed to request in TranslateWorkflow");
+            }
+
+            if(!response.IsSuccessful)
+            {
+                var errorData = JObject.Parse(response.Content);
+                throw new Exception(errorData["error"].ToString());
+            }
+
+            return response.Content;
+        }
+
+
         public static async Task<List<ComfyNode>> GetGhNodesFromComfyUI(string url)
         {
 

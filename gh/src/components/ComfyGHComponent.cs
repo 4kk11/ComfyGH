@@ -6,6 +6,7 @@ using System.Linq;
 using Grasshopper.Kernel.Types;
 using Grasshopper.Kernel.Data;
 using Rhino.Geometry;
+using Rhino.DocObjects.Tables;
 
 
 namespace ComfyGH.Components
@@ -20,8 +21,12 @@ namespace ComfyGH.Components
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddTextParameter("URL", "URL", "", GH_ParamAccess.item);
-            pManager.AddBooleanParameter("Run", "Run", "", GH_ParamAccess.item);
-            pManager.AddBooleanParameter("UpdateParams", "UpdateParams", "", GH_ParamAccess.item);
+            pManager.AddTextParameter("Workflow", "Workflow", "", GH_ParamAccess.item);
+            pManager.AddBooleanParameter("Run", "Run", "", GH_ParamAccess.item, false);
+            pManager.AddBooleanParameter("UpdateParams", "UpdateParams", "", GH_ParamAccess.item, false);
+            this.Params.Input[1].Optional = true;
+            this.Params.Input[2].Optional = true;
+            this.Params.Input[3].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -41,29 +46,81 @@ namespace ComfyGH.Components
 
         private string URL;
 
+        protected override void BeforeSolveInstance()
+        {
+            base.BeforeSolveInstance();
+            Console.WriteLine("BeforeSolveInstance");
+        }
+
         protected override async void SolveInstance(IGH_DataAccess DA)
         {
             string url = "";
+            string workflow = "";
             bool updateParams = false;
             DA.GetData("URL", ref url);
+            DA.GetData("Workflow", ref workflow);
             DA.GetData("UpdateParams", ref updateParams);
             this.URL = url;
-            if (updateParams)
+
+            // 接続の検証（URL）
+            bool isConnectionComfyGH = ConnectionHelper.ValidateComfyGHConnection(url);
+            if (!isConnectionComfyGH)
             {
-                // ComfyUIからノードを取得し、それを元にコンポーネントのinput/outputを更新する
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Failed to connect to ComfyGH. Please install ComfyGH on ComfyUI");
+                return;
+            }
+
+            
+            // input/outputの取得（Workflow）
+            if(updateParams)
+            {
                 try
                 {
-                    var nodes = await ConnectionHelper.GetGhNodesFromComfyUI(this.URL);
+                    var nodes = await ConnectionHelper.GetGhNodes(url, workflow);
                     this.ReceivedComfyNodes = nodes;
                     OnPingDocument().ScheduleSolution(1, RegistParameters);
                 }
                 catch (Exception e)
                 {
                     AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
+                    return;
                 }
 
                 return;
             }
+
+            if(workflow != "")
+            {
+                try
+                {
+                    string test = await ConnectionHelper.TranslateWorkflow(url, workflow);
+                    Console.WriteLine(test);
+                }
+                catch (Exception e)
+                {
+                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
+                    return;
+                }
+                
+            }
+
+
+            // if (updateParams)
+            // {
+            //     // ComfyUIからノードを取得し、それを元にコンポーネントのinput/outputを更新する
+            //     try
+            //     {
+            //         var nodes = await ConnectionHelper.GetGhNodesFromComfyUI(this.URL);
+            //         this.ReceivedComfyNodes = nodes;
+            //         OnPingDocument().ScheduleSolution(1, RegistParameters);
+            //     }
+            //     catch (Exception e)
+            //     {
+            //         AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
+            //     }
+
+            //     return;
+            // }
 
             base.SolveInstance(DA);
 
