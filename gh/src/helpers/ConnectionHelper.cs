@@ -37,7 +37,7 @@ namespace ComfyGH
             }
         }
 
-        public static async Task<List<ComfyNode>> GetGhNodes(string url, string jsonPath)
+        public static List<ComfyNode> GetGhNodes(string url, string jsonPath)
         {
             RestClient restClient = new RestClient(url);
             RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/gh_nodes", Method.POST);
@@ -45,7 +45,7 @@ namespace ComfyGH
             IRestResponse response;
             try
             {
-                response = await restClient.ExecuteAsync(restRequest);
+                response = restClient.Execute(restRequest);
             }
             catch (Exception e)
             {   
@@ -132,13 +132,20 @@ namespace ComfyGH
 
         }
 
-        public static async Task QueuePrompt2(string url, string workflowPath)
+        public static async Task QueuePrompt(string url, string workflowPath, 
+                                            Action<Dictionary<string, object>> OnProgress,
+                                            Action<Dictionary<string, object>> OnExecuting,
+                                            Action<Dictionary<string, object>> OnReceivedImage,
+                                            Action<Dictionary<string, object>> OnReceivedMesh)
         {   
             
             string _client_id = Guid.NewGuid().ToString("N").ToUpper();
 
-            string _workflow = File.ReadAllText(workflowPath);
-            string _prompt = await ConnectionHelper.TranslateWorkflow(url, workflowPath);
+            string _workflowJsonString = File.ReadAllText(workflowPath);
+            string _promptJsonString  = await ConnectionHelper.TranslateWorkflow(url, workflowPath);
+
+            JObject _workflowJson = JObject.Parse(_workflowJsonString);
+            JObject _promptJson = JObject.Parse(_promptJsonString);
 
             var jsonObject = new 
             {
@@ -147,10 +154,10 @@ namespace ComfyGH
                 {
                     extra_praginfo = new 
                     {
-                        workflow = _workflow,
+                        workflow = _workflowJson,
                     }
                 },
-                prompt = _prompt,
+                prompt = _promptJson,
             };
 
             using (var client = new ClientWebSocket())
@@ -183,69 +190,18 @@ namespace ComfyGH
                     // Convet to json
                     var json = Encoding.UTF8.GetString(receivedData.ToArray());
 
-                    Console.WriteLine(json);
-
                     ComfyReceiveObject comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
 
                     receivedData.Clear();
 
                     var type = comfyReceiveObject.Type;
                     var data = comfyReceiveObject.Data;
-
-
-                }
-            }
-        }
-
-
-        public static async Task QueuePrompt(string url,
-                                            Dictionary<string, SendingNodeInputData> sendingData,
-                                            Action<Dictionary<string, object>> OnProgress,
-                                            Action<Dictionary<string, object>> OnReceivedImage,
-                                            Action<Dictionary<string, object>> OnReceivedMesh,
-                                            Action<Dictionary<string, object>> OnClose)
-        {
-            using (var client = new ClientWebSocket())
-            {
-                // Connect to websocket server
-                string address = url.Replace("http://", "");
-                Uri serverUri = new Uri($"ws://{address}/ws?clientId={CLIENT_ID}");
-                await client.ConnectAsync(serverUri, CancellationToken.None);
-
-                // create rest client
-                RestClient restClient = new RestClient(url);
-                // Send to http server
-                RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/queue_prompt", Method.POST);
-                string jsonData = JsonConvert.SerializeObject(sendingData);
-                restRequest.AddParameter("application/json", jsonData, ParameterType.RequestBody);
-                restClient.Execute(restRequest);
-
-                //Receive from server
-                var receivedData = new List<byte>();
-                while (client.State == WebSocketState.Open)
-                {
-                    var receiveBuffer = new byte[4096];
-                    WebSocketReceiveResult result;
-                    do
-                    {
-                        result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
-                        receivedData.AddRange(new ArraySegment<byte>(receiveBuffer, 0, result.Count));
-                    }while(!result.EndOfMessage);
-
-                    // Convet to json
-                    var json = Encoding.UTF8.GetString(receivedData.ToArray());
-                    ComfyReceiveObject comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
-
-                    receivedData.Clear();
-
-                    var type = comfyReceiveObject.Type;
-                    var data = comfyReceiveObject.Data;
-
+                    
                     bool isClose = false;
 
                     switch (type)
                     {
-                        case "comfygh_progress":
+                        case "progress":
                             OnProgress(data);
                             break;
                         case "gh_send_image":
@@ -254,13 +210,17 @@ namespace ComfyGH
                         case "gh_send_mesh":
                             OnReceivedMesh(data);
                             break;
-                        case "comfygh_close":
-                            OnClose(data);
-                            Console.WriteLine("Close!!!");
-                            isClose = true;
+                        case "executing":
+                            var node = data["node"];
+                            if(node == null) 
+                            {
+                                Console.WriteLine("Close");
+                                isClose = true;
+                                break;
+                            }
+                            OnExecuting(data);
                             break;
                     }
-
 
                     if (isClose)
                     {

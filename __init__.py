@@ -156,7 +156,7 @@ def transform_json(input_json):
         node_id = node["id"]
         class_type = node["type"]
         
-        if(class_type == "Reroute" or class_type == "PrimitiveNode"):
+        if(class_type == "Reroute" or class_type == "PrimitiveNode" or class_type == "Note"):
             continue
 
         node_info = comfy_nodes.NODE_CLASS_MAPPINGS[class_type]
