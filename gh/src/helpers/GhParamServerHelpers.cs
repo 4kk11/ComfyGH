@@ -107,9 +107,6 @@ namespace ComfyGH
                         param = new Param_String();
                         isInput = true;
                         break;
-                    case "GH_SendText":
-                        param = new Param_String();
-                        break;
                     case "GH_SendMesh":
                         param = new Param_Mesh();
                         break;

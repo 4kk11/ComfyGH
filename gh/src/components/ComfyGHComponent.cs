@@ -273,15 +273,16 @@ namespace ComfyGH.Components
 
                     try
                     {
-                        SendingNodeInputData seindingData = SendingNodeInputData.Create(node.Type, data);
-                        this.inputData.Add(id, seindingData);
+                        ((ComfyGHComponent)Parent).Workflow.AddNodeInputData(id, data);
                     }
                     catch (Exception e)
                     {
                         Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, e.ToString());
-                        this.inputData = null;
                     }
                 });
+
+                // random seedを更新
+                ((ComfyGHComponent)Parent).Workflow.ApplyNextRandomSeed();
             }
 
             public override void SetData(IGH_DataAccess DA)
@@ -304,9 +305,6 @@ namespace ComfyGH.Components
                 {
                     // initialize
                     ((ComfyGHComponent)Parent).outputObjectsDic.Clear();
-
-                    // Workflowをいじる
-                    ((ComfyGHComponent)Parent).Workflow.ApplyNextRandomSeed();
 
                     // QueuePrompt時のActionを定義
                     Action<Dictionary<string, object>> OnProgress = (data) =>

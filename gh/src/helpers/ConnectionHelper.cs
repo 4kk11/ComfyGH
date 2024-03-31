@@ -151,7 +151,7 @@ namespace ComfyGH
                 client_id = _client_id,
                 extra_data = new
                 {
-                    extra_praginfo = new 
+                    extra_pnginfo = new 
                     {
                         workflow = _workflowJson,
                     }
