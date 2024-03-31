@@ -64,11 +64,11 @@ namespace ComfyGH
             return nodes;
         }
 
-        public static async Task<string> TranslateWorkflow(string url, string workflowPath)
+        public static async Task<string> TranslateWorkflow(string url, ComfyWorkflow workflow)
         {
             RestClient restClient = new RestClient(url);
             RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/prompt", Method.POST);
-            restRequest.AddParameter("application/json", File.ReadAllText(workflowPath), ParameterType.RequestBody);
+            restRequest.AddParameter("application/json", workflow.GetJsonObject(), ParameterType.RequestBody);
             IRestResponse response;
             try
             {
@@ -132,7 +132,7 @@ namespace ComfyGH
 
         }
 
-        public static async Task QueuePrompt(string url, string workflowPath, 
+        public static async Task QueuePrompt(string url, ComfyWorkflow workflow, 
                                             Action<Dictionary<string, object>> OnProgress,
                                             Action<Dictionary<string, object>> OnExecuting,
                                             Action<Dictionary<string, object>> OnReceivedImage,
@@ -141,10 +141,9 @@ namespace ComfyGH
             
             string _client_id = Guid.NewGuid().ToString("N").ToUpper();
 
-            string _workflowJsonString = File.ReadAllText(workflowPath);
-            string _promptJsonString  = await ConnectionHelper.TranslateWorkflow(url, workflowPath);
+            string _promptJsonString  = await ConnectionHelper.TranslateWorkflow(url, workflow);
 
-            JObject _workflowJson = JObject.Parse(_workflowJsonString);
+            JObject _workflowJson = workflow.GetJsonObject();
             JObject _promptJson = JObject.Parse(_promptJsonString);
 
             var jsonObject = new 

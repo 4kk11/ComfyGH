@@ -47,7 +47,7 @@ namespace ComfyGH.Components
         private ComfyNodeGhParamLookup OutputNodeDic = new ComfyNodeGhParamLookup();
 
         private string URL;
-        private string Workflow;
+        private ComfyWorkflow Workflow;
 
         protected override void BeforeSolveInstance()
         {
@@ -101,11 +101,22 @@ namespace ComfyGH.Components
 
             string workflow = "";
             DA.GetData("Workflow", ref workflow);
-            this.Workflow = workflow;
-
-            // Inputの検証（Workflow)
+            
+            // Inputの検証（Workflow)      
             if (workflow == "")
             {
+                OnPingDocument().ScheduleSolution(1, RemoveComfyParameters);
+                SetVisibleButton(false);
+                return;
+            }
+
+            try
+            {
+                this.Workflow = new ComfyWorkflow(workflow);
+            }
+            catch (Exception e)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
                 OnPingDocument().ScheduleSolution(1, RemoveComfyParameters);
                 SetVisibleButton(false);
                 return;
@@ -295,7 +306,7 @@ namespace ComfyGH.Components
                     ((ComfyGHComponent)Parent).outputObjectsDic.Clear();
 
                     // Workflowをいじる
-
+                    ((ComfyGHComponent)Parent).Workflow.ApplyNextRandomSeed();
 
                     // QueuePrompt時のActionを定義
                     Action<Dictionary<string, object>> OnProgress = (data) =>

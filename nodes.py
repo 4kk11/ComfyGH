@@ -89,7 +89,7 @@ class GH_SendImage(nodes.SaveImage):
             encoded_string = base64.b64encode(f.read()).decode("utf-8")
 
         client_id = server.PromptServer.instance.client_id
-        server.PromptServer.instance.send_sync("gh_send_image", {"image": encoded_string, "node_id": node_id})
+        server.PromptServer.instance.send_sync("gh_send_image", {"image": encoded_string, "node_id": node_id}, client_id)
 
         return result
     
@@ -136,7 +136,7 @@ class GH_SendMesh():
             encoded_string = base64.b64encode(obj_file.read()).decode("utf-8")
 
         client_id = server.PromptServer.instance.client_id
-        server.PromptServer.instance.send_sync("gh_send_mesh", {"mesh": encoded_string, "node_id": node_id})
+        server.PromptServer.instance.send_sync("gh_send_mesh", {"mesh": encoded_string, "node_id": node_id}, client_id)
 
         return ()
 
