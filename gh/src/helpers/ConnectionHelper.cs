@@ -132,6 +132,70 @@ namespace ComfyGH
 
         }
 
+        public static async Task QueuePrompt2(string url, string workflowPath)
+        {   
+            
+            string _client_id = Guid.NewGuid().ToString("N").ToUpper();
+
+            string _workflow = File.ReadAllText(workflowPath);
+            string _prompt = await ConnectionHelper.TranslateWorkflow(url, workflowPath);
+
+            var jsonObject = new 
+            {
+                client_id = _client_id,
+                extra_data = new
+                {
+                    extra_praginfo = new 
+                    {
+                        workflow = _workflow,
+                    }
+                },
+                prompt = _prompt,
+            };
+
+            using (var client = new ClientWebSocket())
+            {
+                // Connect to websocket server
+                string address = url.Replace("http://", "");
+                Uri serverUri = new Uri($"ws://{address}/ws?clientId={_client_id}");
+                await client.ConnectAsync(serverUri, CancellationToken.None);
+
+                // create rest client
+                RestClient restClient = new RestClient(url);
+                // Send to http server
+                RestRequest restRequest = new RestRequest("/prompt", Method.POST);
+                string jsonData = JsonConvert.SerializeObject(jsonObject);
+                restRequest.AddParameter("application/json", jsonData, ParameterType.RequestBody);
+                restClient.Execute(restRequest);
+
+                // Receive from server
+                var receivedData = new List<byte>();
+                while (client.State == WebSocketState.Open)
+                {
+                    var receiveBuffer = new byte[4096];
+                    WebSocketReceiveResult result;
+                    do
+                    {
+                        result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
+                        receivedData.AddRange(new ArraySegment<byte>(receiveBuffer, 0, result.Count));
+                    }while(!result.EndOfMessage);
+
+                    // Convet to json
+                    var json = Encoding.UTF8.GetString(receivedData.ToArray());
+
+                    Console.WriteLine(json);
+
+                    ComfyReceiveObject comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
+
+                    receivedData.Clear();
+
+                    var type = comfyReceiveObject.Type;
+                    var data = comfyReceiveObject.Data;
+
+
+                }
+            }
+        }
 
 
         public static async Task QueuePrompt(string url,
