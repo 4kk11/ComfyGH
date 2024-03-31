@@ -9,6 +9,7 @@ using Rhino.Geometry;
 using Rhino.DocObjects.Tables;
 using Grasshopper.Kernel.Parameters;
 using ComfyGH.Attributes;
+using Newtonsoft.Json.Linq;
 
 
 namespace ComfyGH.Components
@@ -289,6 +290,18 @@ namespace ComfyGH.Components
                     ((ComfyGHComponent)Parent).outputObjectsDic.Clear();
 
                     // QueuePrompt時のActionを定義
+                    Action<Dictionary<string, object>> OnStatus = (data) =>
+                    {
+                        var status = (JObject)data["status"];
+                        var execInfo = (JObject)status["exec_info"];
+                        var queueRemaining = Convert.ToInt32(execInfo["queue_remaining"]);
+                        ((ComfyGHComponent)Parent).Message = String.Format("Waiting in queue... {0} remaining", queueRemaining);
+                        Rhino.RhinoApp.InvokeOnUiThread((Action)delegate
+                        {
+                            ((ComfyGHComponent)Parent).OnDisplayExpired(true);
+                        });
+                    };
+
                     Action<Dictionary<string, object>> OnProgress = (data) =>
                     {
                         var value = Convert.ToInt32(data["value"]);
@@ -332,7 +345,7 @@ namespace ComfyGH.Components
                     // QueuePromptを実行
                     try
                     {
-                        await ConnectionHelper.QueuePrompt(((ComfyGHComponent)Parent).URL, ((ComfyGHComponent)Parent).Workflow, OnProgress, OnExecuting, OnReceivedImage, OnReceivedMesh);
+                        await ConnectionHelper.QueuePrompt(((ComfyGHComponent)Parent).URL, ((ComfyGHComponent)Parent).Workflow, OnStatus, OnProgress, OnExecuting, OnReceivedImage, OnReceivedMesh);
                     }
                     catch (Exception e)
                     {

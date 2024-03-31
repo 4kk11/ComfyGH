@@ -89,6 +89,7 @@ namespace ComfyGH
 
 
         public static async Task QueuePrompt(string url, ComfyWorkflow workflow, 
+                                            Action<Dictionary<string, object>> OnStatus,
                                             Action<Dictionary<string, object>> OnProgress,
                                             Action<Dictionary<string, object>> OnExecuting,
                                             Action<Dictionary<string, object>> OnReceivedImage,
@@ -156,6 +157,9 @@ namespace ComfyGH
 
                     switch (type)
                     {
+                        case "status":
+                            OnStatus(data);
+                            break;
                         case "progress":
                             OnProgress(data);
                             break;
@@ -169,7 +173,7 @@ namespace ComfyGH
                             var node = data["node"];
                             if(node == null) 
                             {
-                                Console.WriteLine("Close");
+                                Debug.WriteLine("Close");
                                 isClose = true;
                                 break;
                             }
