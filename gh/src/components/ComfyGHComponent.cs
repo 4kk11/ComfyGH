@@ -187,15 +187,6 @@ namespace ComfyGH.Components
             }
         }
 
-        private void UpdateAttributes()
-        {
-            OnPingDocument().ScheduleSolution(1, (doc) =>
-            {
-                this.OnAttributesChanged();
-                ExpireSolution(false);
-            });
-        }
-
         private void ReflectOutputData(string nodeId, object outputData)
         {
             // outputのParamにデータを反映させる
