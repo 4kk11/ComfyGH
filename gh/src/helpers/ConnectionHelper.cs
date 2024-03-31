@@ -18,8 +18,6 @@ namespace ComfyGH
     public static class ConnectionHelper
     {
 
-        private static readonly string CLIENT_ID = "0CB33780A6EE4767A5DDC2AD41BFE975";
-
         public static bool ValidateComfyGHConnection(string url)
         {
             try
@@ -89,48 +87,6 @@ namespace ComfyGH
             return response.Content;
         }
 
-
-        public static async Task<List<ComfyNode>> GetGhNodesFromComfyUI(string url)
-        {
-
-            using (ClientWebSocket client = new ClientWebSocket())
-            {
-                // connect to websocket server
-                string address = url.Replace("http://", "");
-                Uri serverUri = new Uri($"ws://{address}/ws?clientId={CLIENT_ID}");
-                await client.ConnectAsync(serverUri, CancellationToken.None);
-
-                // create rest client
-                RestClient restClient = new RestClient(url);
-                RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/get_workflow", Method.GET);
-                var body = new { text = "hello" };
-                restRequest.AddJsonBody(body);
-                await restClient.ExecuteAsync(restRequest);
-
-                // receive from server
-                Dictionary<string, object> data = null;
-                while (client.State == WebSocketState.Open)
-                {
-                    var receiveBuffer = new byte[4096];
-                    var result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
-                    // Convet to json
-                    var json = Encoding.UTF8.GetString(receiveBuffer, 0, result.Count);
-                    var comfyReceiveObject = JsonConvert.DeserializeObject<ComfyReceiveObject>(json);
-
-                    var type = comfyReceiveObject.Type;
-
-                    if (type != "send_workflow") continue;
-                    data = comfyReceiveObject.Data;
-                    break;
-                }
-
-                var nodes = ((JArray)data["nodes"]).ToObject<List<ComfyNode>>();
-
-                await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                return nodes;
-            }
-
-        }
 
         public static async Task QueuePrompt(string url, ComfyWorkflow workflow, 
                                             Action<Dictionary<string, object>> OnProgress,
@@ -257,37 +213,4 @@ namespace ComfyGH
         public string Nickname { get; set; }
     }
 
-    // ghコンポーネントに入力されたデータをConfyUIに送るためのデータクラス
-    public class SendingNodeInputData
-    {
-        [JsonProperty("type")]
-        public string NodeType { get; set; }
-
-        [JsonProperty("value")]
-        public object InputData { get; set; }
-
-        private SendingNodeInputData() { }
-
-        static public SendingNodeInputData Create(string nodeType, IGH_Goo data)
-        {
-            object inputData;
-            switch (data)
-            {
-                case GH_ComfyImage image:
-                    inputData = image.Value.ToBase64String();
-                    break;
-                case GH_String str:
-                    inputData = str.Value;
-                    break;
-                default:
-                    throw new Exception("Invalid data input type");
-            }
-
-            return new SendingNodeInputData
-            {
-                NodeType = nodeType,
-                InputData = inputData
-            };
-        }
-    }
 }

@@ -23,12 +23,6 @@ namespace ComfyGH.Components
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddTextParameter("URL", "URL", "", GH_ParamAccess.item);
-            // pManager.AddTextParameter("Workflow", "Workflow", "", GH_ParamAccess.item);
-            // pManager.AddBooleanParameter("Run", "Run", "", GH_ParamAccess.item, false);
-            // pManager.AddBooleanParameter("UpdateParams", "UpdateParams", "", GH_ParamAccess.item, false);
-            // this.Params.Input[1].Optional = true;
-            // this.Params.Input[2].Optional = true;
-            // this.Params.Input[3].Optional = true;
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -62,7 +56,6 @@ namespace ComfyGH.Components
                 SetVisibleButton(false);
             }
 
-            Console.WriteLine("BeforeSolveInstance");
         }
 
         protected override void SolveInstance(IGH_DataAccess DA)
@@ -138,7 +131,7 @@ namespace ComfyGH.Components
                 return;
             }
 
-            Console.WriteLine("SolveInstance");
+            // 非同期処理
             base.SolveInstance(DA);
 
             // 生成したデータをOutputに保持させておく
@@ -245,8 +238,6 @@ namespace ComfyGH.Components
         private class ComfyWorker : WorkerInstance
         {
             bool run;
-
-            Dictionary<string, SendingNodeInputData> inputData = new Dictionary<string, SendingNodeInputData>();
             public ComfyWorker(GH_Component _parent) : base(_parent)
             {
             }
