@@ -52,9 +52,7 @@ namespace ComfyGH.Components
             int sourceCount = GhParamServerHelpers.GetInputDataCount(this.Params, "URL");
             if (sourceCount == 0)
             {
-                OnPingDocument().ScheduleSolution(1, DeleteInput_Workflow);
-                OnPingDocument().ScheduleSolution(1, RemoveComfyParameters);
-                SetVisibleButton(false);
+                this.Reset(true, true);
             }
 
         }
@@ -66,9 +64,7 @@ namespace ComfyGH.Components
             if (sourceCount > 1)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "URL should be connected only one");
-                OnPingDocument().ScheduleSolution(1, DeleteInput_Workflow);
-                OnPingDocument().ScheduleSolution(1, RemoveComfyParameters);
-                SetVisibleButton(false);
+                this.Reset(true, true);
                 return;
             }
 
@@ -81,9 +77,7 @@ namespace ComfyGH.Components
             if (!isConnectionComfyGH)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Failed to connect to ComfyGH. Please install ComfyGH on ComfyUI");
-                OnPingDocument().ScheduleSolution(1, DeleteInput_Workflow);
-                OnPingDocument().ScheduleSolution(1, RemoveComfyParameters);
-                SetVisibleButton(false);
+                this.Reset(true, true);
                 return;
             }
 
@@ -99,26 +93,14 @@ namespace ComfyGH.Components
             // Inputの検証（Workflow)      
             if (workflow == "")
             {
-                OnPingDocument().ScheduleSolution(1, RemoveComfyParameters);
-                SetVisibleButton(false);
-                return;
-            }
-
-            try
-            {
-                this.Workflow = new ComfyWorkflow(workflow);
-            }
-            catch (Exception e)
-            {
-                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
-                OnPingDocument().ScheduleSolution(1, RemoveComfyParameters);
-                SetVisibleButton(false);
+                this.Reset(false, true);
                 return;
             }
 
             // Workflowの検証
             try
             {
+                this.Workflow = new ComfyWorkflow(workflow);
                 var nodes = ConnectionHelper.GetGhNodes(url, workflow);
                 this.ReceivedComfyNodes = nodes;
                 OnPingDocument().ScheduleSolution(1, UpdateComfyParameters);
@@ -127,8 +109,7 @@ namespace ComfyGH.Components
             catch (Exception e)
             {
                 AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
-                OnPingDocument().ScheduleSolution(1, RemoveComfyParameters);
-                SetVisibleButton(false);
+                this.Reset(false, true);
                 return;
             }
 
@@ -145,6 +126,23 @@ namespace ComfyGH.Components
                 if (!isExist) continue;
                 DA.SetData(param.Name, imagePath);
             }
+        }
+
+        private void Reset(bool removeWorkflowParam, bool removeComfyParams)
+        {
+            if (removeWorkflowParam)
+            {
+                OnPingDocument().ScheduleSolution(1, DeleteInput_Workflow);
+            }
+
+            if (removeComfyParams)
+            {
+                OnPingDocument().ScheduleSolution(1, RemoveComfyParameters);
+                SetVisibleButton(false);
+            }
+
+            this.Message = "";
+            SetRunningState(RunningState.Idle);
         }
 
         private void UpdateComfyParameters(GH_Document doc)
@@ -219,6 +217,11 @@ namespace ComfyGH.Components
         private void SetEnabledButton(bool enabled)
         {
             (base.Attributes as ButtonAttributes).Enabled = enabled;
+        }
+
+        private void SetRunningState(RunningState state)
+        {
+            (base.Attributes as ButtonAttributes).RunningState = state;
         }
 
         public override void CreateAttributes()
@@ -368,6 +371,7 @@ namespace ComfyGH.Components
                     try
                     {
                         ((ComfyGHComponent)Parent).SetEnabledButton(false);
+                        ((ComfyGHComponent)Parent).SetRunningState(RunningState.Running);
                         await ConnectionHelper.QueuePrompt(((ComfyGHComponent)Parent).URL, ((ComfyGHComponent)Parent).Workflow, OnStatus, OnProgress, OnExecuting, OnReceivedImage, OnReceivedMesh);
                     }
                     catch (Exception e)
@@ -380,6 +384,7 @@ namespace ComfyGH.Components
                         ((ComfyGHComponent)Parent).SetEnabledButton(true);
                     }
 
+                    ((ComfyGHComponent)Parent).SetRunningState(RunningState.Finished);
                     Done();
                 }
 

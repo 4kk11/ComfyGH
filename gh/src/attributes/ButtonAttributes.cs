@@ -9,6 +9,14 @@ using Rhino.UI.Controls;
 
 namespace ComfyGH.Attributes
 {
+    public enum RunningState
+    {
+        Idle,
+        Running,
+        Finished,
+        Error
+    }
+
     public class ButtonAttributes : GH_ComponentAttributes
     {
         private Rectangle ButtonBounds { get; set; }
@@ -20,6 +28,8 @@ namespace ComfyGH.Attributes
         public bool Visible { get; set; } = true;
 
         public bool Enabled { get; set; } = true;
+
+        public RunningState RunningState { get; set; } = RunningState.Idle;
 
         public ButtonAttributes(IGH_Component component) : base(component)
         {
@@ -47,25 +57,60 @@ namespace ComfyGH.Attributes
 
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
         {
-            base.Render(canvas, graphics, channel);
-            if (this.Visible && channel == GH_CanvasChannel.Objects)
+            
+            if (channel == GH_CanvasChannel.Objects)
             {
-                if (this.Enabled)
+                GH_PaletteStyle style = GH_Skin.palette_normal_standard;
+
+                Color edgeColor;
+                switch (this.RunningState)
                 {
-                    using (GH_Capsule gH_Capsule = (this.Pressed ? GH_Capsule.CreateTextCapsule(this.ButtonBounds, this.ButtonBounds, GH_Palette.Grey, DisplayText, 2, 0) :
-                                                                GH_Capsule.CreateTextCapsule(this.ButtonBounds, this.ButtonBounds, GH_Palette.Black, DisplayText, 2, 0)))
-                    {
-                        gH_Capsule.Render(graphics, this.Selected, base.Owner.Locked, hidden: false);
-                    }
+                    case RunningState.Idle:
+                        edgeColor = Color.Black;
+                        break;
+                    case RunningState.Running:
+                        edgeColor = Color.FromArgb(0, 122, 204);
+                        break;
+                    case RunningState.Finished:
+                        edgeColor = Color.FromArgb(0, 204, 0);
+                        break;
+                    case RunningState.Error:
+                        edgeColor = Color.FromArgb(204, 0, 0);
+                        break;
+                    default:
+                        edgeColor = Color.Black;
+                        break;
                 }
-                else
+                //Color textColor = GH_GraphicsUtil.ForegroundColour(edgeColor, 200);
+                GH_Skin.palette_normal_standard = new GH_PaletteStyle(style.Fill, edgeColor, style.Text);
+                base.Render(canvas, graphics, channel);
+
+                GH_Skin.palette_normal_standard = style;
+
+                if (this.Visible && channel == GH_CanvasChannel.Objects)
                 {
-                    using (GH_Capsule gH_Capsule = GH_Capsule.CreateTextCapsule(this.ButtonBounds, this.ButtonBounds, GH_Palette.Locked, DisplayText, 2, 0))
+                    if (this.Enabled)
                     {
-                        gH_Capsule.Render(graphics, this.Selected, base.Owner.Locked, hidden: false);
+                        using (GH_Capsule gH_Capsule = (this.Pressed ? GH_Capsule.CreateTextCapsule(this.ButtonBounds, this.ButtonBounds, GH_Palette.Grey, DisplayText, 2, 0) :
+                                                                    GH_Capsule.CreateTextCapsule(this.ButtonBounds, this.ButtonBounds, GH_Palette.Black, DisplayText, 2, 0)))
+                        {
+                            gH_Capsule.Render(graphics, this.Selected, base.Owner.Locked, hidden: false);
+                        }
+                    }
+                    else
+                    {
+                        using (GH_Capsule gH_Capsule = GH_Capsule.CreateTextCapsule(this.ButtonBounds, this.ButtonBounds, GH_Palette.Locked, DisplayText, 2, 0))
+                        {
+                            gH_Capsule.Render(graphics, this.Selected, base.Owner.Locked, hidden: false);
+                        }
                     }
                 }
             }
+            else
+            {
+                base.Render(canvas, graphics, channel);
+            }
+
         }
 
         public override GH_ObjectResponse RespondToMouseDown(GH_Canvas sender, GH_CanvasMouseEvent e)
