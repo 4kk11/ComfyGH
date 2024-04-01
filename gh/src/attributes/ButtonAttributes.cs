@@ -57,7 +57,7 @@ namespace ComfyGH.Attributes
 
         protected override void Render(GH_Canvas canvas, Graphics graphics, GH_CanvasChannel channel)
         {
-            
+
             if (channel == GH_CanvasChannel.Objects)
             {
                 GH_PaletteStyle style = GH_Skin.palette_normal_standard;

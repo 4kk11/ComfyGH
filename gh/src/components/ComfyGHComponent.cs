@@ -90,7 +90,7 @@ namespace ComfyGH.Components
 
             // Inputの検証（Workflow) 
             string workflow = "";
-            DA.GetData("Workflow", ref workflow);     
+            DA.GetData("Workflow", ref workflow);
             if (workflow == "")
             {
                 this.Reset(false, true);

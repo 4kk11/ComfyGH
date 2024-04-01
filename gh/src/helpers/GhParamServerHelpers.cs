@@ -19,7 +19,7 @@ namespace ComfyGH
 {
     public static class GhParamServerHelpers
     {
-       
+
         static public bool RemoveComfyParams(GH_ComponentParamServer parmServer, ComfyNodeGhParamLookup inputNodeDic, ComfyNodeGhParamLookup outputNodeDic)
         {
             bool isRemoved = false;
@@ -165,9 +165,9 @@ namespace ComfyGH
             return true;
         }
 
-        static public bool RegistInputDynamic<T>(GH_ComponentParamServer parmServer, string name, bool optional) where T: IGH_Param
+        static public bool RegistInputDynamic<T>(GH_ComponentParamServer parmServer, string name, bool optional) where T : IGH_Param
         {
-            if(IsExistInput(parmServer, name)) return false;
+            if (IsExistInput(parmServer, name)) return false;
 
             GH_ComponentParamServer.IGH_SyncObject sync_data = parmServer.EmitSyncObject();
 
@@ -259,6 +259,6 @@ namespace ComfyGH
 
             return -1;
         }
-        
+
     }
 }

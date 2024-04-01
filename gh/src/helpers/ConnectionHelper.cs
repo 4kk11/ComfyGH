@@ -46,12 +46,12 @@ namespace ComfyGH
                 response = restClient.Execute(restRequest);
             }
             catch (Exception e)
-            {   
+            {
                 Debug.WriteLine(e);
                 throw new Exception("Failed to request in GetGhNodes");
             }
 
-            if(!response.IsSuccessful)
+            if (!response.IsSuccessful)
             {
                 var errorData = JObject.Parse(response.Content);
                 throw new Exception(errorData["error"].ToString());
@@ -78,7 +78,7 @@ namespace ComfyGH
                 throw new Exception("Failed to request in TranslateWorkflow");
             }
 
-            if(!response.IsSuccessful)
+            if (!response.IsSuccessful)
             {
                 var errorData = JObject.Parse(response.Content);
                 throw new Exception(errorData["error"].ToString());
@@ -88,27 +88,27 @@ namespace ComfyGH
         }
 
 
-        public static async Task QueuePrompt(string url, ComfyWorkflow workflow, 
+        public static async Task QueuePrompt(string url, ComfyWorkflow workflow,
                                             Action<Dictionary<string, object>> OnStatus,
                                             Action<Dictionary<string, object>> OnProgress,
                                             Action<Dictionary<string, object>> OnExecuting,
                                             Action<Dictionary<string, object>> OnReceivedImage,
                                             Action<Dictionary<string, object>> OnReceivedMesh)
-        {   
-            
+        {
+
             string _client_id = Guid.NewGuid().ToString("N").ToUpper();
 
-            string _promptJsonString  = await ConnectionHelper.TranslateWorkflow(url, workflow);
+            string _promptJsonString = await ConnectionHelper.TranslateWorkflow(url, workflow);
 
             JObject _workflowJson = workflow.GetJsonObject();
             JObject _promptJson = JObject.Parse(_promptJsonString);
 
-            var jsonObject = new 
+            var jsonObject = new
             {
                 client_id = _client_id,
                 extra_data = new
                 {
-                    extra_pnginfo = new 
+                    extra_pnginfo = new
                     {
                         workflow = _workflowJson,
                     }
@@ -141,7 +141,7 @@ namespace ComfyGH
                     {
                         result = await client.ReceiveAsync(new ArraySegment<byte>(receiveBuffer), CancellationToken.None);
                         receivedData.AddRange(new ArraySegment<byte>(receiveBuffer, 0, result.Count));
-                    }while(!result.EndOfMessage);
+                    } while (!result.EndOfMessage);
 
                     // Convet to json
                     var json = Encoding.UTF8.GetString(receivedData.ToArray());
@@ -152,7 +152,7 @@ namespace ComfyGH
 
                     var type = comfyReceiveObject.Type;
                     var data = comfyReceiveObject.Data;
-                    
+
                     bool isClose = false;
 
                     switch (type)
@@ -171,7 +171,7 @@ namespace ComfyGH
                             break;
                         case "executing":
                             var node = data["node"];
-                            if(node == null) 
+                            if (node == null)
                             {
                                 Debug.WriteLine("Close");
                                 isClose = true;

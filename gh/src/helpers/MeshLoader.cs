@@ -32,7 +32,7 @@ namespace ComfyGH
                     doc.Dispose();
                 }
 
-                if(mesh == null)
+                if (mesh == null)
                     throw new Exception("Failed to load mesh");
 
                 return mesh;

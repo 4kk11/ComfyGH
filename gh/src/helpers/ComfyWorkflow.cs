@@ -31,7 +31,7 @@ namespace ComfyGH
         public void ApplyNextRandomSeed()
         {
             // 各"widgets_values"を走査し、配列中に"randomize"がある場合、その一つ前の数値にランダムな数値を適用する
-            foreach ( JObject node in this._jsonObject["nodes"].Cast<JObject>())
+            foreach (JObject node in this._jsonObject["nodes"].Cast<JObject>())
             {
                 if (!node.ContainsKey("widgets_values")) continue;
 
