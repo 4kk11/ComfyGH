@@ -1,6 +1,6 @@
 ---
 name: ComfyGH
-version: 0.0.1
+version: 0.0.3
 authors:
 - 4kk11
 description: This plugin hacks ComfyUI from Grasshopper.
