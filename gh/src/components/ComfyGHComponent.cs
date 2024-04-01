@@ -6,6 +6,11 @@ using System.Linq;
 using Grasshopper.Kernel.Types;
 using Grasshopper.Kernel.Data;
 using Rhino.Geometry;
+using Rhino.DocObjects.Tables;
+using Grasshopper.Kernel.Parameters;
+using ComfyGH.Attributes;
+using Newtonsoft.Json.Linq;
+using System.Windows.Forms;
 
 
 namespace ComfyGH.Components
@@ -20,8 +25,6 @@ namespace ComfyGH.Components
         protected override void RegisterInputParams(GH_Component.GH_InputParamManager pManager)
         {
             pManager.AddTextParameter("URL", "URL", "", GH_ParamAccess.item);
-            pManager.AddBooleanParameter("Run", "Run", "", GH_ParamAccess.item);
-            pManager.AddBooleanParameter("UpdateParams", "UpdateParams", "", GH_ParamAccess.item);
         }
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
@@ -40,36 +43,82 @@ namespace ComfyGH.Components
         private ComfyNodeGhParamLookup OutputNodeDic = new ComfyNodeGhParamLookup();
 
         private string URL;
+        private ComfyWorkflow Workflow;
 
-        protected override async void SolveInstance(IGH_DataAccess DA)
+        protected override void BeforeSolveInstance()
         {
-            string url = "";
-            bool updateParams = false;
-            DA.GetData("URL", ref url);
-            DA.GetData("UpdateParams", ref updateParams);
-            this.URL = url;
-            if (updateParams)
-            {
-                // ComfyUIからノードを取得し、それを元にコンポーネントのinput/outputを更新する
-                try
-                {
-                    var nodes = await ConnectionHelper.GetGhNodesFromComfyUI(this.URL);
-                    this.ReceivedComfyNodes = nodes;
-                    OnPingDocument().ScheduleSolution(1, RegistParameters);
-                }
-                catch (Exception e)
-                {
-                    AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
-                }
+            base.BeforeSolveInstance();
 
+            // URLの接続がない場合は、SolveInstanceが実行されないので、ここでInputの削除を行う
+            int sourceCount = GhParamServerHelpers.GetInputDataCount(this.Params, "URL");
+            if (sourceCount == 0)
+            {
+                this.Reset(true, true);
+            }
+
+        }
+
+        protected override void SolveInstance(IGH_DataAccess DA)
+        {
+            // Inputの検証（URL）
+            int sourceCount = GhParamServerHelpers.GetInputDataCount(this.Params, "URL");
+            if (sourceCount > 1)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "URL should be connected only one");
+                this.Reset(true, true);
                 return;
             }
 
+            string url = "";
+            DA.GetData("URL", ref url);
+            this.URL = url;
+
+            // 接続の検証（URL）
+            bool isConnectionComfyGH = ConnectionHelper.ValidateComfyGHConnection(url);
+            if (!isConnectionComfyGH)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, "Failed to connect to ComfyGH. Please install ComfyGH on ComfyUI");
+                this.Reset(true, true);
+                return;
+            }
+
+            // inputにworkflowのParamを追加する(すでに存在する場合はなにもしない)
+            OnPingDocument().ScheduleSolution(1, RegistInput_Workflow);
+
+            // inputにworkflowのParamが存在しない場合は、ここから先に進まない
+            if (!GhParamServerHelpers.IsExistInput(this.Params, "Workflow")) return;
+
+            // Inputの検証（Workflow) 
+            string workflow = "";
+            DA.GetData("Workflow", ref workflow);
+            if (workflow == "")
+            {
+                this.Reset(false, true);
+                return;
+            }
+
+            // Workflowの検証
+            try
+            {
+                this.Workflow = new ComfyWorkflow(workflow);
+                var nodes = ConnectionHelper.GetGhNodes(url, workflow);
+                this.ReceivedComfyNodes = nodes;
+                OnPingDocument().ScheduleSolution(1, UpdateComfyParameters);
+                SetVisibleButton(true);
+            }
+            catch (Exception e)
+            {
+                AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
+                this.Reset(false, true);
+                return;
+            }
+
+            // 非同期処理
             base.SolveInstance(DA);
 
             // 生成したデータをOutputに保持させておく
             // これをしないと、再計算の際(F5キーとか)にデータが消えてしまう
-            foreach (var output_image in outputObjectsDic)
+            foreach (var output_image in this.outputObjectsDic)
             {
                 var id = output_image.Key;
                 var imagePath = output_image.Value;
@@ -79,12 +128,62 @@ namespace ComfyGH.Components
             }
         }
 
-        private void RegistParameters(GH_Document doc)
+        private void Reset(bool removeWorkflowParam, bool removeComfyParams)
+        {
+            if (removeWorkflowParam)
+            {
+                OnPingDocument().ScheduleSolution(1, DeleteInput_Workflow);
+            }
+
+            if (removeComfyParams)
+            {
+                OnPingDocument().ScheduleSolution(1, RemoveComfyParameters);
+                SetVisibleButton(false);
+            }
+
+            this.Message = "";
+            SetRunningState(RunningState.Idle);
+        }
+
+        private void UpdateComfyParameters(GH_Document doc)
         {
             // ConfyUIから受け取ったノード情報を元に、コンポーネントのinput/outputを更新する
-            GhParamServerHelpers.UpdateParamServer(this.Params, this.ReceivedComfyNodes, this.InputNodeDic, this.OutputNodeDic);
-            this.OnAttributesChanged();
-            ExpireSolution(false);
+            bool isUpdated = GhParamServerHelpers.UpdateComfyParams(this.Params, this.ReceivedComfyNodes, this.InputNodeDic, this.OutputNodeDic);
+            if (isUpdated)
+            {
+                this.OnAttributesChanged();
+                ExpireSolution(false);
+            }
+        }
+
+        private void RemoveComfyParameters(GH_Document doc)
+        {
+            bool isRemoved = GhParamServerHelpers.RemoveComfyParams(this.Params, this.InputNodeDic, this.OutputNodeDic);
+            if (isRemoved)
+            {
+                this.OnAttributesChanged();
+                ExpireSolution(false);
+            }
+        }
+
+        private void RegistInput_Workflow(GH_Document doc)
+        {
+            bool isRegisted = GhParamServerHelpers.RegistInputDynamic<Param_String>(this.Params, "Workflow", true);
+            if (isRegisted)
+            {
+                this.OnAttributesChanged();
+                ExpireSolution(false);
+            }
+        }
+
+        private void DeleteInput_Workflow(GH_Document doc)
+        {
+            bool isDeleted = GhParamServerHelpers.DeleteInputDynamic(this.Params, "Workflow");
+            if (isDeleted)
+            {
+                this.OnAttributesChanged();
+                ExpireSolution(false);
+            }
         }
 
         private void ReflectOutputData(string nodeId, object outputData)
@@ -100,7 +199,7 @@ namespace ComfyGH.Components
                 param.ClearData();
                 param.AddVolatileData(new GH_Path(1), 0, data);
 
-                if(param.Recipients.Count > 0)
+                if (param.Recipients.Count > 0)
                 {
                     foreach (var recipient in param.Recipients)
                     {
@@ -108,6 +207,43 @@ namespace ComfyGH.Components
                     }
                 }
             });
+        }
+
+        private void SetVisibleButton(bool visible)
+        {
+            (base.Attributes as ButtonAttributes).Visible = visible;
+        }
+
+        private void SetEnabledButton(bool enabled)
+        {
+            (base.Attributes as ButtonAttributes).Enabled = enabled;
+        }
+
+        private void SetRunningState(RunningState state)
+        {
+            (base.Attributes as ButtonAttributes).RunningState = state;
+        }
+
+        public override void CreateAttributes()
+        {
+            this.m_attributes = new ButtonAttributes(this);
+            SetVisibleButton(false);
+        }
+
+        public override bool AppendMenuItems(ToolStripDropDown menu)
+        {
+            bool b = base.AppendMenuItems(menu);
+
+            EventHandler onClick = (sender, e) =>
+            {
+                this.Reset(false, false);
+                this.outputObjectsDic.Clear();
+                this.ExpireSolution(true);
+            };
+
+            Menu_AppendItem(menu, "Clear Data", onClick);
+
+            return b;
         }
 
         protected override System.Drawing.Bitmap Icon => null;
@@ -118,8 +254,6 @@ namespace ComfyGH.Components
         private class ComfyWorker : WorkerInstance
         {
             bool run;
-
-            Dictionary<string, SendingNodeInputData> inputData = new Dictionary<string, SendingNodeInputData>();
             public ComfyWorker(GH_Component _parent) : base(_parent)
             {
             }
@@ -131,7 +265,7 @@ namespace ComfyGH.Components
 
             public override void GetData(IGH_DataAccess DA, GH_ComponentParamServer Params)
             {
-                DA.GetData("Run", ref run);
+                this.run = (Parent.Attributes as ButtonAttributes).Pressed;
 
                 // Get data from input node params
                 ((ComfyGHComponent)Parent).InputNodeDic.ToList().ForEach(pair =>
@@ -146,15 +280,16 @@ namespace ComfyGH.Components
 
                     try
                     {
-                        SendingNodeInputData seindingData = SendingNodeInputData.Create(node.Type, data);
-                        this.inputData.Add(id, seindingData);
+                        ((ComfyGHComponent)Parent).Workflow.AddNodeInputData(id, data);
                     }
                     catch (Exception e)
                     {
                         Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Warning, e.ToString());
-                        this.inputData = null;
                     }
                 });
+
+                // random seedを更新
+                ((ComfyGHComponent)Parent).Workflow.ApplyNextRandomSeed();
             }
 
             public override void SetData(IGH_DataAccess DA)
@@ -172,31 +307,57 @@ namespace ComfyGH.Components
 
             public override async void DoWork(Action<string, double> ReportProgress, Action Done)
             {
-                if (run && this.inputData != null)
+                // if (run && this.inputData != null)
+                if (run)
                 {
                     // initialize
                     ((ComfyGHComponent)Parent).outputObjectsDic.Clear();
 
+                    // QueuePrompt時のActionを定義
+                    int myQueuePosition = int.MaxValue;
+                    int prevQueueRemaining = 0;
+                    Action<Dictionary<string, object>> OnStatus = (data) =>
+                    {
+                        var status = (JObject)data["status"];
+                        var execInfo = (JObject)status["exec_info"];
+                        var currQueueRemaining = Convert.ToInt32(execInfo["queue_remaining"]);
+
+                        // キューが進んだ場合、自分のキュー位置を更新
+                        if (currQueueRemaining < prevQueueRemaining)
+                        {
+                            myQueuePosition -= prevQueueRemaining - currQueueRemaining;
+                        }
+
+                        // 自分が最後尾にいる場合（キューに追加された時）、キューの位置を登録
+                        if (currQueueRemaining < myQueuePosition)
+                        {
+                            myQueuePosition = currQueueRemaining;
+                        }
+
+                        prevQueueRemaining = currQueueRemaining;
+
+                        ((ComfyGHComponent)Parent).Message = String.Format("Waiting in queue... {0} remaining", myQueuePosition);
+                        Rhino.RhinoApp.InvokeOnUiThread((Action)delegate
+                        {
+                            ((ComfyGHComponent)Parent).OnDisplayExpired(true);
+                        });
+                    };
 
                     Action<Dictionary<string, object>> OnProgress = (data) =>
                     {
-                        var progressType = (string)data["progress_type"];
-                        if(progressType == "number")
+                        var value = Convert.ToInt32(data["value"]);
+                        var max = Convert.ToInt32(data["max"]);
+                        ReportProgress(Id, (double)value / max);
+                    };
+
+                    Action<Dictionary<string, object>> OnExecuting = (data) =>
+                    {
+                        var nodeId = (string)data["node"];
+                        ((ComfyGHComponent)Parent).Message = String.Format("Executing {0}...", nodeId);
+                        Rhino.RhinoApp.InvokeOnUiThread((Action)delegate
                         {
-                            var value = Convert.ToInt32(data["value"]);
-                            var max = Convert.ToInt32(data["max"]);
-                            ReportProgress(Id, (double)value / max);
-                        }
-                        else if(progressType == "text")
-                        {
-                            var nodeType = (string)data["node_type"];
-                            ((ComfyGHComponent)Parent).Message = String.Format("Executing {0}...", nodeType);
-                            Rhino.RhinoApp.InvokeOnUiThread((Action)delegate
-                            {
-                                ((ComfyGHComponent)Parent).OnDisplayExpired(true);
-                            });
-                        }
-                        
+                            ((ComfyGHComponent)Parent).OnDisplayExpired(true);
+                        });
                     };
 
                     Action<Dictionary<string, object>> OnReceivedImage = (data) =>
@@ -214,28 +375,32 @@ namespace ComfyGH.Components
                     {
                         var nodeId = (string)data["node_id"];
                         string base64string = (string)data["mesh"];
-                        
+
                         Mesh mesh = MeshLoader.FromBase64String(base64string);
 
                         ((ComfyGHComponent)Parent).outputObjectsDic[nodeId] = mesh;
                         ((ComfyGHComponent)Parent).ReflectOutputData(nodeId, mesh);
                     };
 
-                    Action<Dictionary<string, object>> OnClose = (data) =>
-                    {
-                    };
 
-
+                    // QueuePromptを実行
                     try
                     {
-                        await ConnectionHelper.QueuePrompt(((ComfyGHComponent)Parent).URL, this.inputData, OnProgress, OnReceivedImage, OnReceivedMesh, OnClose);
+                        ((ComfyGHComponent)Parent).SetEnabledButton(false);
+                        ((ComfyGHComponent)Parent).SetRunningState(RunningState.Running);
+                        await ConnectionHelper.QueuePrompt(((ComfyGHComponent)Parent).URL, ((ComfyGHComponent)Parent).Workflow, OnStatus, OnProgress, OnExecuting, OnReceivedImage, OnReceivedMesh);
                     }
                     catch (Exception e)
                     {
                         Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
                         return;
                     }
+                    finally
+                    {
+                        ((ComfyGHComponent)Parent).SetEnabledButton(true);
+                    }
 
+                    ((ComfyGHComponent)Parent).SetRunningState(RunningState.Finished);
                     Done();
                 }
 

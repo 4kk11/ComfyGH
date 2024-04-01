@@ -16,9 +16,8 @@ class GH_LoadImage:
         input_dir = folder_paths.get_input_directory()
         files = [f for f in os.listdir(input_dir) if os.path.isfile(os.path.join(input_dir, f))]
         return {
-            "required": {
-                "image": (sorted(files), {"image_upload": True})
-            }
+            "required": {"image": (sorted(files), {"image_upload": True})},
+            "hidden": {"node_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}
         }
     RETURN_TYPES = ("IMAGE", )
     RETURN_NAMES = ("image", )
@@ -26,7 +25,10 @@ class GH_LoadImage:
 
     CATEGORY = "ComfyGH"
 
-    def run(self, image):
+    def run(self, image, node_id = None, extra_pnginfo = None):
+
+        GH_LoadImage.pre_run(image, node_id, extra_pnginfo)
+
         image_path = folder_paths.get_annotated_filepath(image)
         i = Image.open(image_path)
         i = ImageOps.exif_transpose(i)
@@ -42,8 +44,10 @@ class GH_LoadImage:
     
 
     @classmethod
-    def IS_CHANGED(s, image):
-        print("IS_CHANGED", image)
+    def IS_CHANGED(s, image, node_id = None, extra_pnginfo = None):
+
+        GH_LoadImage.pre_run(image, node_id, extra_pnginfo)
+        
         image_path = folder_paths.get_annotated_filepath(image)
         m = hashlib.sha256()
         with open(image_path, 'rb') as f:
@@ -56,6 +60,16 @@ class GH_LoadImage:
             return "Invalid image file: {}".format(image)
 
         return True
+    
+    @classmethod
+    def pre_run(self, image, node_id = None, extra_pnginfo = None):
+        extra_data = extra_pnginfo["workflow"]["extra"]
+        if str(node_id) in extra_data:
+            b64 = extra_data[str(node_id)]
+            image_data = base64.b64decode(b64)
+            file_path = folder_paths.get_annotated_filepath(image)
+            with open(file_path, "wb") as f:
+                f.write(image_data)  
 
 
 
@@ -79,8 +93,7 @@ class GH_SendImage(nodes.SaveImage):
     CATEGORY = "ComfyGH"
 
 
-    def run(self, images, filename_prefix = "ComfyUI", prompt = None, extra_pnginfo = None, node_id = None):
-
+    def run(self, images, filename_prefix = "ComfyUI", prompt = None, extra_pnginfo = None, node_id = None):        
         result = super().save_images(images, filename_prefix, prompt, extra_pnginfo)
 
         filename = result["ui"]["images"][0]["filename"]
@@ -89,7 +102,7 @@ class GH_SendImage(nodes.SaveImage):
             encoded_string = base64.b64encode(f.read()).decode("utf-8")
 
         client_id = server.PromptServer.instance.client_id
-        server.PromptServer.instance.send_sync("gh_send_image", {"image": encoded_string, "node_id": node_id})
+        server.PromptServer.instance.send_sync("gh_send_image", {"image": encoded_string, "node_id": node_id}, client_id)
 
         return result
     
@@ -97,27 +110,25 @@ class GH_SendImage(nodes.SaveImage):
 class GH_LoadText():
     @classmethod
     def INPUT_TYPES(s):
-        return {"required": {"text": ("STRING", {"multiline": True})}}
+        return {"required": {"text": ("STRING", {"multiline": True})},
+                "hidden": {"node_id": "UNIQUE_ID", "extra_pnginfo": "EXTRA_PNGINFO"}}
     RETURN_TYPES = ("STRING", )
     FUNCTION = "run"
     CATEGORY = "ComfyGH"
 
-    def run(self, text):
+    def run(self, text, node_id = None, extra_pnginfo = None):
+        extra_data = extra_pnginfo["workflow"]["extra"]
+        if str(node_id) in extra_data:
+            text = extra_data[str(node_id)]
         return (text,)
-
-class GH_SendText():
+    
     @classmethod
-    def INPUT_TYPES(s):
-        return {"required": {"text": ("STRING", {"forceInput": True})}}
-    OUTPUT_NODE = True
-    RETURN_TYPES = ()
-    FUNCTION  = "run"
-    CATEGORY = "ComfyGH"
+    def IS_CHANGED(s, text, node_id = None, extra_pnginfo = None):
+        extra_data = extra_pnginfo["workflow"]["extra"]
+        if str(node_id) in extra_data:
+            text = extra_data[str(node_id)]
+        return text
 
-    def run(self, text):
-        print(text)
-        # いまはUIはついていないが、"executed"を発生させたいので、"ui"をつける
-        return {"ui": {"container": [{"text": text}]}, "result": ()}
 
 
 class GH_SendMesh():
@@ -136,7 +147,7 @@ class GH_SendMesh():
             encoded_string = base64.b64encode(obj_file.read()).decode("utf-8")
 
         client_id = server.PromptServer.instance.client_id
-        server.PromptServer.instance.send_sync("gh_send_mesh", {"mesh": encoded_string, "node_id": node_id})
+        server.PromptServer.instance.send_sync("gh_send_mesh", {"mesh": encoded_string, "node_id": node_id}, client_id)
 
         return ()
 
@@ -145,7 +156,6 @@ NODE_CLASS_MAPPINGS = {
     'GH_LoadImage': GH_LoadImage,
     'GH_SendImage': GH_SendImage,
     'GH_LoadText': GH_LoadText,
-    'GH_SendText': GH_SendText,
     'GH_SendMesh': GH_SendMesh,
 }
 
@@ -153,6 +163,5 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     'GH_LoadImage': 'GH_LoadImage',
     'GH_SendImage': 'GH_SendImage',
     'GH_LoadText': 'GH_LoadText',
-    'GH_SendText': 'GH_SendText',
     'GH_SendMesh': 'GH_SendMesh',
 }

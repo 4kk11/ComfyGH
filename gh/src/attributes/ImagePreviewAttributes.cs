@@ -33,7 +33,7 @@ namespace ComfyGH.Attributes
                         RenderIncomingWires(canvas.Painter, base.Owner.Sources, base.Owner.WireDisplay);
                     }
                     break;
-         
+
                 case GH_CanvasChannel.Objects:
                     {
                         // Render capsule 
@@ -48,7 +48,7 @@ namespace ComfyGH.Attributes
                         Bitmap image = base.Owner.LoadPreviewImage();
                         if (image != null)
                         {
-                            lock(bitmapLock)
+                            lock (bitmapLock)
                             {
                                 graphics.DrawImage(image, rect);
                             }

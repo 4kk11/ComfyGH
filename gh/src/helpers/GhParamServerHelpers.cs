@@ -19,9 +19,52 @@ namespace ComfyGH
 {
     public static class GhParamServerHelpers
     {
-       
-        static public void UpdateParamServer(GH_ComponentParamServer parmServer, List<ComfyNode> comfyNodes, ComfyNodeGhParamLookup inputNodeDic, ComfyNodeGhParamLookup outputNodeDic)
+
+        static public bool RemoveComfyParams(GH_ComponentParamServer parmServer, ComfyNodeGhParamLookup inputNodeDic, ComfyNodeGhParamLookup outputNodeDic)
         {
+            bool isRemoved = false;
+            GH_ComponentParamServer.IGH_SyncObject sync_data = parmServer.EmitSyncObject();
+
+            foreach (var id in inputNodeDic.Keys)
+            {
+                IGH_Param param = inputNodeDic.GetParam(id);
+                parmServer.UnregisterInputParameter(param);
+                inputNodeDic.Remove(id);
+                isRemoved = true;
+            }
+
+            foreach (var id in outputNodeDic.Keys)
+            {
+                IGH_Param param = outputNodeDic.GetParam(id);
+                parmServer.UnregisterOutputParameter(param);
+                outputNodeDic.Remove(id);
+                isRemoved = true;
+            }
+
+            parmServer.Sync(sync_data);
+            return isRemoved;
+        }
+
+        static public bool NeedUpdateComfyParams(List<ComfyNode> comfyNodes, ComfyNodeGhParamLookup inputNodeDic, ComfyNodeGhParamLookup outputNodeDic)
+        {
+            if (comfyNodes.Count != inputNodeDic.Count + outputNodeDic.Count) return true;
+
+            foreach (var node in comfyNodes)
+            {
+                if (!inputNodeDic.ContainsKey(node.Id) && !outputNodeDic.ContainsKey(node.Id))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        static public bool UpdateComfyParams(GH_ComponentParamServer parmServer, List<ComfyNode> comfyNodes, ComfyNodeGhParamLookup inputNodeDic, ComfyNodeGhParamLookup outputNodeDic)
+        {
+            bool needUpdate = NeedUpdateComfyParams(comfyNodes, inputNodeDic, outputNodeDic);
+            if (!needUpdate) return false;
+
             GH_ComponentParamServer.IGH_SyncObject sync_data = parmServer.EmitSyncObject();
 
             // Unregist
@@ -63,9 +106,6 @@ namespace ComfyGH
                     case "GH_LoadText":
                         param = new Param_String();
                         isInput = true;
-                        break;
-                    case "GH_SendText":
-                        param = new Param_String();
                         break;
                     case "GH_SendMesh":
                         param = new Param_Mesh();
@@ -121,6 +161,104 @@ namespace ComfyGH
 
 
             parmServer.Sync(sync_data);
+
+            return true;
         }
+
+        static public bool RegistInputDynamic<T>(GH_ComponentParamServer parmServer, string name, bool optional) where T : IGH_Param
+        {
+            if (IsExistInput(parmServer, name)) return false;
+
+            GH_ComponentParamServer.IGH_SyncObject sync_data = parmServer.EmitSyncObject();
+
+            IGH_Param param = (T)Activator.CreateInstance(typeof(T));
+            param.Name = name;
+            param.NickName = name;
+            param.Access = GH_ParamAccess.item;
+            param.Optional = optional;
+
+            parmServer.RegisterInputParam(param);
+
+            parmServer.Sync(sync_data);
+            return true;
+        }
+
+        static public bool DeleteInputDynamic(GH_ComponentParamServer parmServer, string Name)
+        {
+            GH_ComponentParamServer.IGH_SyncObject sync_data = parmServer.EmitSyncObject();
+
+            bool isDeleted = false;
+
+            foreach (var input in parmServer.Input)
+            {
+                if (input.NickName == Name)
+                {
+                    parmServer.UnregisterInputParameter(input);
+                    isDeleted = true;
+                    break;
+                }
+            }
+
+            parmServer.Sync(sync_data);
+            return isDeleted;
+        }
+
+        static public bool IsExistInput(GH_ComponentParamServer parmServer, string intputName)
+        {
+
+            foreach (var input in parmServer.Input)
+            {
+                if (input.NickName == intputName)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+
+        static public bool HasInputOnlyOneSource(GH_ComponentParamServer paramServer, string name)
+        {
+            foreach (var input in paramServer.Input)
+            {
+                if (input.NickName == name)
+                {
+                    if (input.Sources.Count == 1)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        static public int GetInputSourceCount(GH_ComponentParamServer paramServer, string name)
+        {
+            foreach (var input in paramServer.Input)
+            {
+                if (input.NickName == name)
+                {
+                    return input.Sources.Count;
+                }
+            }
+
+            return -1;
+        }
+
+        static public int GetInputDataCount(GH_ComponentParamServer paramServer, string name)
+        {
+            foreach (var input in paramServer.Input)
+            {
+                if (input.NickName == name)
+                {
+                    return input.VolatileDataCount;
+                }
+            }
+
+            return -1;
+        }
+
     }
 }
