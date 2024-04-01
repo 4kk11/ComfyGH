@@ -23,7 +23,7 @@
 		<MyDestinationFolder>$(HOME)/Library/Application Support/McNeel/Rhinoceros/8.0/Plug-ins/Grasshopper (b45a29b1-4343-4035-989e-044e8580d9cf)/Libraries</MyDestinationFolder>
 	</PropertyGroup>
 
-	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(SKIP_POST_BUILD)' != '1'">
 		<ItemGroup>
 			<MySourceFiles Include="$(TargetDir)\**" />
 		</ItemGroup>
