@@ -10,6 +10,7 @@ using Rhino.DocObjects.Tables;
 using Grasshopper.Kernel.Parameters;
 using ComfyGH.Attributes;
 using Newtonsoft.Json.Linq;
+using System.Windows.Forms;
 
 
 namespace ComfyGH.Components
@@ -81,16 +82,15 @@ namespace ComfyGH.Components
                 return;
             }
 
-            // inputにworkflowのParamを追加する
-            // すでに存在する場合はなにもしない
+            // inputにworkflowのParamを追加する(すでに存在する場合はなにもしない)
             OnPingDocument().ScheduleSolution(1, RegistInput_Workflow);
 
+            // inputにworkflowのParamが存在しない場合は、ここから先に進まない
             if (!GhParamServerHelpers.IsExistInput(this.Params, "Workflow")) return;
 
+            // Inputの検証（Workflow) 
             string workflow = "";
-            DA.GetData("Workflow", ref workflow);
-            
-            // Inputの検証（Workflow)      
+            DA.GetData("Workflow", ref workflow);     
             if (workflow == "")
             {
                 this.Reset(false, true);
@@ -118,7 +118,7 @@ namespace ComfyGH.Components
 
             // 生成したデータをOutputに保持させておく
             // これをしないと、再計算の際(F5キーとか)にデータが消えてしまう
-            foreach (var output_image in outputObjectsDic)
+            foreach (var output_image in this.outputObjectsDic)
             {
                 var id = output_image.Key;
                 var imagePath = output_image.Value;
@@ -228,6 +228,22 @@ namespace ComfyGH.Components
         {
             this.m_attributes = new ButtonAttributes(this);
             SetVisibleButton(false);
+        }
+
+        public override bool AppendMenuItems(ToolStripDropDown menu)
+        {
+            bool b = base.AppendMenuItems(menu);
+
+            EventHandler onClick = (sender, e) =>
+            {
+                this.Reset(false, false);
+                this.outputObjectsDic.Clear();
+                this.ExpireSolution(true);
+            };
+
+            Menu_AppendItem(menu, "Clear Data", onClick);
+
+            return b;
         }
 
         protected override System.Drawing.Bitmap Icon => null;
