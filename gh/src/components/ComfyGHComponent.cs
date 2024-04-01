@@ -290,12 +290,29 @@ namespace ComfyGH.Components
                     ((ComfyGHComponent)Parent).outputObjectsDic.Clear();
 
                     // QueuePrompt時のActionを定義
+                    int myQueuePosition = int.MaxValue;
+                    int prevQueueRemaining = 0;
                     Action<Dictionary<string, object>> OnStatus = (data) =>
                     {
                         var status = (JObject)data["status"];
                         var execInfo = (JObject)status["exec_info"];
-                        var queueRemaining = Convert.ToInt32(execInfo["queue_remaining"]);
-                        ((ComfyGHComponent)Parent).Message = String.Format("Waiting in queue... {0} remaining", queueRemaining);
+                        var currQueueRemaining = Convert.ToInt32(execInfo["queue_remaining"]);
+
+                        // キューが進んだ場合、自分のキュー位置を更新
+                        if (currQueueRemaining < prevQueueRemaining)
+                        {
+                            myQueuePosition -= prevQueueRemaining - currQueueRemaining;
+                        }
+
+                        // 自分が最後尾にいる場合（キューに追加された時）、キューの位置を登録
+                        if (currQueueRemaining < myQueuePosition)
+                        {
+                            myQueuePosition = currQueueRemaining;
+                        }
+
+                        prevQueueRemaining = currQueueRemaining;
+
+                        ((ComfyGHComponent)Parent).Message = String.Format("Waiting in queue... {0} remaining", myQueuePosition);
                         Rhino.RhinoApp.InvokeOnUiThread((Action)delegate
                         {
                             ((ComfyGHComponent)Parent).OnDisplayExpired(true);
