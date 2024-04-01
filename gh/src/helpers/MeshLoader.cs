@@ -4,6 +4,7 @@ using System.IO;
 using Rhino;
 using Rhino.DocObjects;
 using Rhino.DocObjects.Tables;
+using Rhino.FileIO;
 using Rhino.Geometry;
 
 namespace ComfyGH
@@ -70,7 +71,13 @@ namespace ComfyGH
                 document.ModelUnitSystem = activeDoc.ModelUnitSystem;
             }
 
-            if (import && !document.Import(filepath))
+            var readOptions = new Rhino.FileIO.FileReadOptions();
+            readOptions.BatchMode = true;
+            readOptions.ImportMode = true;
+            FileObjReadOptions objOptions = new FileObjReadOptions(readOptions);
+            objOptions.MapYtoZ = true;
+
+            if (import && !FileObj.Read(filepath, document, objOptions))
             {
                 document.Dispose();
                 document = null;
