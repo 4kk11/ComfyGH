@@ -216,6 +216,11 @@ namespace ComfyGH.Components
             (base.Attributes as ButtonAttributes).Visible = visible;
         }
 
+        private void SetEnabledButton(bool enabled)
+        {
+            (base.Attributes as ButtonAttributes).Enabled = enabled;
+        }
+
         public override void CreateAttributes()
         {
             this.m_attributes = new ButtonAttributes(this);
@@ -362,12 +367,17 @@ namespace ComfyGH.Components
                     // QueuePromptを実行
                     try
                     {
+                        ((ComfyGHComponent)Parent).SetEnabledButton(false);
                         await ConnectionHelper.QueuePrompt(((ComfyGHComponent)Parent).URL, ((ComfyGHComponent)Parent).Workflow, OnStatus, OnProgress, OnExecuting, OnReceivedImage, OnReceivedMesh);
                     }
                     catch (Exception e)
                     {
                         Parent.AddRuntimeMessage(GH_RuntimeMessageLevel.Error, e.ToString());
                         return;
+                    }
+                    finally
+                    {
+                        ((ComfyGHComponent)Parent).SetEnabledButton(true);
                     }
 
                     Done();
