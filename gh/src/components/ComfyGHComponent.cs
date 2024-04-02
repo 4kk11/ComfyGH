@@ -101,7 +101,7 @@ namespace ComfyGH.Components
             try
             {
                 this.Workflow = new ComfyWorkflow(workflow);
-                var nodes = ConnectionHelper.GetGhNodes(url, workflow);
+                var nodes = ConnectionHelper.GetGhNodes(url, this.Workflow);
                 this.ReceivedComfyNodes = nodes;
                 OnPingDocument().ScheduleSolution(1, UpdateComfyParameters);
                 SetVisibleButton(true);

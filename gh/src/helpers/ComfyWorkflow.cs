@@ -1,9 +1,11 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using ComfyGH.Types;
 using Grasshopper.Kernel.Types;
 using Newtonsoft.Json.Linq;
+using Rhino;
 
 namespace ComfyGH
 {
@@ -11,8 +13,9 @@ namespace ComfyGH
     {
         private JObject _jsonObject;
 
-        public ComfyWorkflow(string workflowJsonPath)
+        public ComfyWorkflow(string _workflowJsonPath)
         {
+            string workflowJsonPath = this.GetFullPath(_workflowJsonPath);
             if (!File.Exists(workflowJsonPath))
             {
                 throw new FileNotFoundException("Workflow json file not found.");
@@ -20,6 +23,24 @@ namespace ComfyGH
 
             string json = File.ReadAllText(workflowJsonPath);
             this._jsonObject = JObject.Parse(json);
+        }
+
+        private string GetFullPath(string path)
+        {
+            if (Path.IsPathRooted(path))
+            {
+                // 絶対パスの場合はそのまま返す
+                return path;
+            }
+            else
+            {
+                // 相対パスの場合は自身のライブラリのパスと結合して返す
+                string libraryPath = Path.GetDirectoryName(typeof(ComfyWorkflow).Assembly.Location);
+                string combinedPath = Path.Combine(libraryPath, path);
+                string fullPath = Path.GetFullPath(combinedPath);
+                Console.WriteLine(fullPath);
+                return fullPath;
+            }
         }
 
         public JObject GetJsonObject()

@@ -35,11 +35,11 @@ namespace ComfyGH
             }
         }
 
-        public static List<ComfyNode> GetGhNodes(string url, string jsonPath)
+        public static List<ComfyNode> GetGhNodes(string url, ComfyWorkflow workflow)
         {
             RestClient restClient = new RestClient(url);
             RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/gh_nodes", Method.POST);
-            restRequest.AddParameter("application/json", File.ReadAllText(jsonPath), ParameterType.RequestBody);
+            restRequest.AddParameter("application/json", workflow.GetJsonObject(), ParameterType.RequestBody);
             IRestResponse response;
             try
             {
