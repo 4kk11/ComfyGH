@@ -11,7 +11,8 @@ namespace ComfyGH
 {
     public class ComfyWorkflow
     {
-        private JObject _jsonObject;
+        private JObject _originalJsonObject;
+        private JObject _editedJsonObject;
 
         public ComfyWorkflow(string _workflowJsonPath)
         {
@@ -22,7 +23,8 @@ namespace ComfyGH
             }
 
             string json = File.ReadAllText(workflowJsonPath);
-            this._jsonObject = JObject.Parse(json);
+            this._originalJsonObject = JObject.Parse(json);
+            this._editedJsonObject = JObject.Parse(json);
         }
 
         private string GetFullPath(string path)
@@ -43,16 +45,22 @@ namespace ComfyGH
             }
         }
 
-        public JObject GetJsonObject()
+        public JObject GetOriginalJsonObject()
         {
             // return clone
-            return JObject.Parse(this._jsonObject.ToString());
+            return JObject.Parse(this._originalJsonObject.ToString());
+        }
+
+        public JObject GetEditedJsonObject()
+        {
+            // return clone
+            return JObject.Parse(this._editedJsonObject.ToString());
         }
 
         public void ApplyNextRandomSeed()
         {
             // 各"widgets_values"を走査し、配列中に"randomize"がある場合、その一つ前の数値にランダムな数値を適用する
-            foreach (JObject node in this._jsonObject["nodes"].Cast<JObject>())
+            foreach (JObject node in this._editedJsonObject["nodes"].Cast<JObject>())
             {
                 if (!node.ContainsKey("widgets_values")) continue;
 
@@ -73,7 +81,7 @@ namespace ComfyGH
 
         public void AddExtraProperty(string key, object value)
         {
-            JObject extra = (JObject)this._jsonObject["extra"];
+            JObject extra = (JObject)this._editedJsonObject["extra"];
             extra[key] = JToken.FromObject(value);
         }
 

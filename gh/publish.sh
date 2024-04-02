@@ -11,7 +11,7 @@ cd "$(dirname "$0")"
 rm -rf ./bin/Package
 
 # ビルド
-SKIP_POST_BUILD=1 dotnet build -c Release -o ./bin/Package
+dotnet build -c Release -o ./bin/Package
 
 # コピー
 cp -r ./Yak/manifest.yml ./bin/Package
