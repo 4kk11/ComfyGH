@@ -11,8 +11,9 @@ namespace ComfyGH
 {
     public class ComfyWorkflow
     {
-        private JObject _originalJsonObject;
-        private JObject _editedJsonObject;
+        private JObject _jsonObject;
+
+        public string FilePath { get; private set;}
 
         public ComfyWorkflow(string _workflowJsonPath)
         {
@@ -23,8 +24,15 @@ namespace ComfyGH
             }
 
             string json = File.ReadAllText(workflowJsonPath);
-            this._originalJsonObject = JObject.Parse(json);
-            this._editedJsonObject = JObject.Parse(json);
+            this._jsonObject = JObject.Parse(json);
+            this._jsonObject = JObject.Parse(json);
+            this.FilePath = workflowJsonPath;
+        }
+
+        public ComfyWorkflow(string jsonPath, JObject workflowJson)
+        {
+            this._jsonObject = workflowJson;
+            this.FilePath = jsonPath;
         }
 
         private string GetFullPath(string path)
@@ -45,22 +53,16 @@ namespace ComfyGH
             }
         }
 
-        public JObject GetOriginalJsonObject()
+        public JObject GetJsonObject()
         {
             // return clone
-            return JObject.Parse(this._originalJsonObject.ToString());
-        }
-
-        public JObject GetEditedJsonObject()
-        {
-            // return clone
-            return JObject.Parse(this._editedJsonObject.ToString());
+            return JObject.Parse(this._jsonObject.ToString());
         }
 
         public void ApplyNextRandomSeed()
         {
             // 各"widgets_values"を走査し、配列中に"randomize"がある場合、その一つ前の数値にランダムな数値を適用する
-            foreach (JObject node in this._editedJsonObject["nodes"].Cast<JObject>())
+            foreach (JObject node in this._jsonObject["nodes"].Cast<JObject>())
             {
                 if (!node.ContainsKey("widgets_values")) continue;
 
@@ -81,8 +83,13 @@ namespace ComfyGH
 
         public void AddExtraProperty(string key, object value)
         {
-            JObject extra = (JObject)this._editedJsonObject["extra"];
+            JObject extra = (JObject)this._jsonObject["extra"];
             extra[key] = JToken.FromObject(value);
+        }
+
+        public void ClearExtraProperty()
+        {
+            this._jsonObject["extra"] = new JObject();
         }
 
         public void AddNodeInputData(string nodeId, IGH_Goo data)
@@ -100,6 +107,11 @@ namespace ComfyGH
                     throw new ArgumentException("Unsupported data type.");
             }
             this.AddExtraProperty(nodeId, inputData);
+        }
+
+        public ComfyWorkflow Clone()
+        {
+            return new ComfyWorkflow(this.FilePath, this.GetJsonObject());
         }
 
     }
