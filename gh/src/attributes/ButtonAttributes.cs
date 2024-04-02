@@ -60,7 +60,8 @@ namespace ComfyGH.Attributes
 
             if (channel == GH_CanvasChannel.Objects)
             {
-                GH_PaletteStyle style = GH_Skin.palette_normal_standard;
+                GH_PaletteStyle normalStyle = GH_Skin.palette_normal_standard;
+                GH_PaletteStyle hiddenStyle = GH_Skin.palette_hidden_standard;
 
                 Color edgeColor;
                 switch (this.RunningState)
@@ -81,11 +82,13 @@ namespace ComfyGH.Attributes
                         edgeColor = Color.Black;
                         break;
                 }
-                //Color textColor = GH_GraphicsUtil.ForegroundColour(edgeColor, 200);
-                GH_Skin.palette_normal_standard = new GH_PaletteStyle(style.Fill, edgeColor, style.Text);
+                
+                GH_Skin.palette_normal_standard = new GH_PaletteStyle(normalStyle.Fill, edgeColor, normalStyle.Text);
+                GH_Skin.palette_hidden_standard = new GH_PaletteStyle(hiddenStyle.Fill, edgeColor, hiddenStyle.Text);
                 base.Render(canvas, graphics, channel);
 
-                GH_Skin.palette_normal_standard = style;
+                GH_Skin.palette_normal_standard = normalStyle;
+                GH_Skin.palette_hidden_standard = hiddenStyle;
 
                 if (this.Visible && channel == GH_CanvasChannel.Objects)
                 {
