@@ -7,6 +7,9 @@ ORIGINAL_DIR=$(pwd)
 # 現在のスクリプトのディレクトリに移動
 cd "$(dirname "$0")"
 
+# 初期化
+rm -rf ./bin/Package
+
 # ビルド
 SKIP_POST_BUILD=1 dotnet build -c Release -o ./bin/Package
 
