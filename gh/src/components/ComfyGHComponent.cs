@@ -29,7 +29,6 @@ namespace ComfyGH.Components
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
-            pManager.AddTextParameter("Output", "Output", "", GH_ParamAccess.item);
         }
 
         // ComfyUIから送られてくる情報を格納するためにDictionary、keyはComfyUIのノードid
