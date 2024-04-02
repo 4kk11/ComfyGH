@@ -217,9 +217,6 @@
       "properties": {
         "Run widget replace on values": false
       },
-      "widgets_values": [
-        "(normal quality), (low quality), (worst quality), paintings, sketches,lowres, text, cropped, worst quality, low quality, normal quality, signature, watermark, username, blurry,skech,logo,blurry, drawing, sketch, poor quality, ugly, low resolution, saturated, high contrast, oversharpened,low quality, bad anatomy, worst quality,deformed,  disfigured, cropped, jpeg artifacts, error, mutation,noise,UnrealisticDream"
-      ],
       "color": "#223",
       "bgcolor": "#335"
     },
@@ -266,7 +263,7 @@
         "Node name for S&R": "CLIPTextEncode"
       },
       "widgets_values": [
-        "interior, RAW photo,Masterpiece, high quality, best quality, authentic, (high detailed :1.2), 8k uhd, dslr, soft lighting, high quality, film grain"
+        "undefined"
       ],
       "color": "#322",
       "bgcolor": "#533"
@@ -535,9 +532,6 @@
       "properties": {
         "Run widget replace on values": false
       },
-      "widgets_values": [
-        "interior, RAW photo,Masterpiece, high quality, best quality, authentic, (high detailed :1.2), 8k uhd, dslr, soft lighting, high quality, film grain"
-      ],
       "color": "#322",
       "bgcolor": "#533"
     },
@@ -1008,7 +1002,7 @@
         "Node name for S&R": "CLIPTextEncode"
       },
       "widgets_values": [
-        "(normal quality), (low quality), (worst quality), paintings, sketches,lowres, text, cropped, worst quality, low quality, normal quality, signature, watermark, username, blurry,skech,logo,blurry, drawing, sketch, poor quality, ugly, low resolution, saturated, high contrast, oversharpened,low quality, bad anatomy, worst quality,deformed,  disfigured, cropped, jpeg artifacts, error, mutation,noise,UnrealisticDream"
+        "undefined"
       ],
       "color": "#223",
       "bgcolor": "#335"
@@ -1497,67 +1491,6 @@
       }
     },
     {
-      "id": 99,
-      "type": "KSampler",
-      "pos": [
-        1840,
-        -40
-      ],
-      "size": {
-        "0": 320.63671875,
-        "1": 263.1784362792969
-      },
-      "flags": {},
-      "order": 45,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 121
-        },
-        {
-          "name": "positive",
-          "type": "CONDITIONING",
-          "link": 366
-        },
-        {
-          "name": "negative",
-          "type": "CONDITIONING",
-          "link": 368
-        },
-        {
-          "name": "latent_image",
-          "type": "LATENT",
-          "link": 90
-        }
-      ],
-      "outputs": [
-        {
-          "name": "LATENT",
-          "type": "LATENT",
-          "links": [
-            447
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "KSampler"
-      },
-      "widgets_values": [
-        1020411081294745,
-        "fixed",
-        30,
-        7,
-        "dpmpp_3m_sde_gpu",
-        "karras",
-        0.8
-      ],
-      "color": "#222",
-      "bgcolor": "#000"
-    },
-    {
       "id": 245,
       "type": "Reroute",
       "pos": [
@@ -1856,10 +1789,10 @@
         -9,
         -1578
       ],
-      "size": [
-        315,
-        293.9999752044678
-      ],
+      "size": {
+        "0": 315,
+        "1": 293.9999694824219
+      },
       "flags": {},
       "order": 7,
       "mode": 0,
@@ -1881,7 +1814,9 @@
       "widgets_values": [
         "adapt_image.jpg",
         "image"
-      ]
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 258,
@@ -1890,10 +1825,10 @@
         -2132,
         1087
       ],
-      "size": [
-        315,
-        294
-      ],
+      "size": {
+        "0": 315,
+        "1": 294
+      },
       "flags": {},
       "order": 8,
       "mode": 0,
@@ -1915,7 +1850,9 @@
       "widgets_values": [
         "source.jpg",
         "image"
-      ]
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
     },
     {
       "id": 260,
@@ -1941,7 +1878,70 @@
       "title": "Image",
       "properties": {
         "Node name for S&R": "GH_SendImage"
-      }
+      },
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 99,
+      "type": "KSampler",
+      "pos": [
+        1840,
+        -40
+      ],
+      "size": {
+        "0": 320.63671875,
+        "1": 263.1784362792969
+      },
+      "flags": {},
+      "order": 45,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 121
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 366
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 368
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 90
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            447
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        1020411081294745,
+        "randomize",
+        30,
+        7,
+        "dpmpp_3m_sde_gpu",
+        "karras",
+        0.8
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
     }
   ],
   "links": [
