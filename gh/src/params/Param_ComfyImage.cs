@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 
 namespace ComfyGH.Params
 {
-    public class Param_ComfyImage : GH_Param<GH_ComfyImage>
+    public class Param_ComfyImage : GH_PersistentParam<GH_ComfyImage>
     {
 
         public Param_ComfyImage() : base(new GH_InstanceDescription("ComfyImage", "CI", "ComfyImage", "ComfyGH", "Params"))
@@ -53,6 +53,15 @@ namespace ComfyGH.Params
             return bitmap;
         }
 
+        protected override GH_GetterResult Prompt_Singular(ref GH_ComfyImage value)
+        {
+            return GH_GetterResult.success;
+        }
+
+        protected override GH_GetterResult Prompt_Plural(ref List<GH_ComfyImage> values)
+        {
+            return GH_GetterResult.success;
+        }
 
         public override GH_Exposure Exposure => GH_Exposure.primary;
 

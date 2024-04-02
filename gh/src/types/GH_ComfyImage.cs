@@ -9,6 +9,7 @@ using Rhino.Geometry;
 using Grasshopper;
 using Grasshopper.Kernel;
 using Grasshopper.Kernel.Types;
+using GH_IO.Serialization;
 
 namespace ComfyGH.Types
 {
@@ -82,6 +83,28 @@ namespace ComfyGH.Types
             }
             return false;
         }
-        
+
+        public override bool Write(GH_IWriter writer)
+        {
+            if (this.Value != null)
+            {
+                string base64str = this.Value.ToBase64String();
+                writer.SetString("base64", base64str);
+            }
+
+            return base.Write(writer);
+        }
+
+        public override bool Read(GH_IReader reader)
+        {
+            if (reader.ItemExists("base64"))
+            {
+                string base64str = reader.GetString("base64");
+                this.Value = ComfyImage.FromBase64String(base64str);
+            }
+
+            return base.Read(reader);
+        }
+
     }
 }
