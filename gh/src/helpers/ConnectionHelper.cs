@@ -129,7 +129,13 @@ namespace ComfyGH
                 RestRequest restRequest = new RestRequest("/prompt", Method.POST);
                 string jsonData = JsonConvert.SerializeObject(jsonObject);
                 restRequest.AddParameter("application/json", jsonData, ParameterType.RequestBody);
-                restClient.Execute(restRequest);
+                var response = restClient.Execute(restRequest);
+
+                // Check response
+                if(!response.IsSuccessful)
+                {
+                    throw new Exception(response.Content);
+                }
 
                 // Receive from server
                 var receivedData = new List<byte>();
