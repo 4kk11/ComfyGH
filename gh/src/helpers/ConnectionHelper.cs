@@ -39,7 +39,7 @@ namespace ComfyGH
         {
             RestClient restClient = new RestClient(url);
             RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/gh_nodes", Method.POST);
-            restRequest.AddParameter("application/json", workflow.GetJsonObject(), ParameterType.RequestBody);
+            restRequest.AddParameter("application/json", workflow.GetOriginalJsonObject(), ParameterType.RequestBody);
             IRestResponse response;
             try
             {
@@ -66,7 +66,7 @@ namespace ComfyGH
         {
             RestClient restClient = new RestClient(url);
             RestRequest restRequest = new RestRequest("/custom_nodes/ComfyGH/prompt", Method.POST);
-            restRequest.AddParameter("application/json", workflow.GetJsonObject(), ParameterType.RequestBody);
+            restRequest.AddParameter("application/json", workflow.GetOriginalJsonObject(), ParameterType.RequestBody);
             IRestResponse response;
             try
             {
@@ -100,7 +100,7 @@ namespace ComfyGH
 
             string _promptJsonString = await ConnectionHelper.TranslateWorkflow(url, workflow);
 
-            JObject _workflowJson = workflow.GetJsonObject();
+            JObject _workflowJson = workflow.GetEditedJsonObject();
             JObject _promptJson = JObject.Parse(_promptJsonString);
 
             var jsonObject = new
