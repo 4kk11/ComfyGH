@@ -3,7 +3,7 @@ This plugin hacks [ComfyUI](https://github.com/comfyanonymous/ComfyUI) from Gras
 
 
 
-https://github.com/4kk11/ComfyGH/assets/61794994/4c56f2b1-e67a-4958-8102-558f58ddf2ae
+https://github.com/4kk11/ComfyGH/assets/61794994/fe2cedb8-298d-4a9f-8638-19dd493a6122
 
 
 
