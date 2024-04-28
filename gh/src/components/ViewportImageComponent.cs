@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Drawing;
+using System.Linq;
 
 using Rhino;
 using Rhino.Geometry;
@@ -29,6 +30,7 @@ namespace ComfyGH.Components
         protected override void RegisterInputParams(GH_InputParamManager pManager)
         {
             pManager.AddBooleanParameter("Update", "Update", "", GH_ParamAccess.item, false);
+            pManager.AddTextParameter("DisplayMode", "DisplayMode", "", GH_ParamAccess.item, "Rendered");
             this.Params.Input[0].Optional = true;
         }
 
@@ -41,16 +43,21 @@ namespace ComfyGH.Components
         {
             //get data
             bool update = false;
-            DA.GetData(0, ref update);
+            string displayModeName = "";
+            DA.GetData("Update", ref update);
+            DA.GetData("DisplayMode", ref displayModeName);
 
             if (update)
             {
                 this.AddHandlers();
 
                 RhinoDoc doc = RhinoDoc.ActiveDoc;
-                RhinoViewport viewport = doc.Views.ActiveView.ActiveViewport;
-
-                Bitmap bitmap = DisplayPipeline.DrawToBitmap(viewport, viewport.Size.Width, viewport.Size.Height);
+                
+                // get display mode
+                var displayMode = Rhino.Display.DisplayModeDescription.GetDisplayModes().FirstOrDefault(x => x.EnglishName == displayModeName);
+                
+                // create image
+                Bitmap bitmap = doc.Views.ActiveView.CaptureToBitmap(displayMode);
                 ComfyImage comfyImage = new ComfyImage(bitmap);
                 GH_ComfyImage image = new GH_ComfyImage(comfyImage);
                 _image = image;

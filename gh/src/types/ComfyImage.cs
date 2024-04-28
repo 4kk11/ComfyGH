@@ -58,6 +58,11 @@ namespace ComfyGH
         {
             return new ComfyImage(this.bitmap.Clone() as Bitmap);
         }
+
+        public override string ToString()
+        {
+            return $"ComfyImage({this.bitmap.Width}x{this.bitmap.Height})";
+        }
         
     }
 }
