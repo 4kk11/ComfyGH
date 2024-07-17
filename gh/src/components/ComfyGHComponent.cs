@@ -103,7 +103,7 @@ namespace ComfyGH.Components
                 var nodes = ConnectionHelper.GetGhNodes(url, this.Workflow);
                 this.ReceivedComfyNodes = nodes;
                 OnPingDocument().ScheduleSolution(1, UpdateComfyParameters);
-                SetVisibleButton(true);
+                SetVisibleRunningUI(true);
             }
             catch (Exception e)
             {
@@ -137,7 +137,7 @@ namespace ComfyGH.Components
             if (removeComfyParams)
             {
                 OnPingDocument().ScheduleSolution(1, RemoveComfyParameters);
-                SetVisibleButton(false);
+                SetVisibleRunningUI(false);
             }
 
             this.Message = "";
@@ -185,6 +185,26 @@ namespace ComfyGH.Components
             }
         }
 
+        private void RegistInput_Run(GH_Document doc)
+        {
+            bool isRegisted = GhParamServerHelpers.RegistInputDynamic<Param_Boolean>(this.Params, "Run", true);
+            if (isRegisted)
+            {
+                this.OnAttributesChanged();
+                ExpireSolution(false);
+            }
+        }
+
+        private void DeleteInput_Run(GH_Document doc)
+        {
+            bool isDeleted = GhParamServerHelpers.DeleteInputDynamic(this.Params, "Run");
+            if (isDeleted)
+            {
+                this.OnAttributesChanged();
+                ExpireSolution(false);
+            }
+        }
+
         private void ReflectOutputData(string nodeId, object outputData)
         {
             // outputのParamにデータを反映させる
@@ -208,6 +228,55 @@ namespace ComfyGH.Components
             });
         }
 
+        private enum RunningUI{
+            Button,
+            Param,
+        }
+
+        private RunningUI runInterface = RunningUI.Button;
+        private bool isVisibleRunInterface = false;
+
+        private void SetRunningUI(RunningUI runInterface)
+        {
+            if(this.runInterface == runInterface) return;
+            this.runInterface = runInterface;
+
+            if(!isVisibleRunInterface) return;
+
+            switch (runInterface)
+            {
+                case RunningUI.Button:
+                    OnPingDocument().ScheduleSolution(1, DeleteInput_Run);
+                    SetVisibleButton(true);
+                    break;
+                case RunningUI.Param:
+                    SetVisibleButton(false);
+                    OnPingDocument().ScheduleSolution(1, RegistInput_Run);
+                    break;
+            }
+        }
+
+        private void SetVisibleRunningUI(bool visible)
+        {
+            if(this.isVisibleRunInterface == visible) return;
+            this.isVisibleRunInterface = visible;
+
+            switch (this.runInterface)
+            {
+                case RunningUI.Button:
+                    SetVisibleButton(visible);
+                    break;
+                case RunningUI.Param:
+                    if(visible)
+                    {
+                        OnPingDocument().ScheduleSolution(1, RegistInput_Run);
+                    } else {
+                        OnPingDocument().ScheduleSolution(1, DeleteInput_Run);
+                    }
+                    break;
+            }
+        }
+
         private void SetVisibleButton(bool visible)
         {
             (base.Attributes as ButtonAttributes).Visible = visible;
@@ -221,6 +290,11 @@ namespace ComfyGH.Components
         private void SetRunningState(RunningState state)
         {
             (base.Attributes as ButtonAttributes).RunningState = state;
+        }
+
+        private RunningState GetRunningState()
+        {
+            return (base.Attributes as ButtonAttributes).RunningState;
         }
 
         public override void CreateAttributes()
@@ -240,7 +314,23 @@ namespace ComfyGH.Components
                 this.ExpireSolution(true);
             };
 
+            EventHandler onClick2 = (sender, e) =>
+            {
+                bool isActiveRunParam = this.runInterface == RunningUI.Param;
+                
+                if (isActiveRunParam)
+                {
+                    this.SetRunningUI(RunningUI.Button);
+                } else {
+                    this.SetRunningUI(RunningUI.Param);
+                }
+
+                this.ExpireSolution(true);
+            };
+
             Menu_AppendItem(menu, "Clear Data", onClick);
+            // Menu_AppendItem(menu, "Clicked", onClick2);
+            Menu_AppendItem(menu, "Run Interface", onClick2, true, this.runInterface == RunningUI.Param);
 
             return b;
         }
@@ -263,8 +353,26 @@ namespace ComfyGH.Components
             }
 
             public override void GetData(IGH_DataAccess DA, GH_ComponentParamServer Params)
-            {
-                this.run = (Parent.Attributes as ButtonAttributes).Pressed;
+            {                
+                switch ((Parent as ComfyGHComponent).runInterface)
+                {
+                    case RunningUI.Button:
+                        this.run = (Parent.Attributes as ButtonAttributes).Pressed;
+                        break;
+                    case RunningUI.Param:
+                        try{
+                            DA.GetData("Run", ref this.run);
+                        } catch (Exception e)
+                        {
+                            this.run = false;
+                        }
+                        break;
+                }
+
+                if ((Parent as ComfyGHComponent).GetRunningState() == RunningState.Running)
+                {
+                    this.run = false;
+                }
 
                 // Get data from input node params
                 ((ComfyGHComponent)Parent).InputNodeDic.ToList().ForEach(pair =>
