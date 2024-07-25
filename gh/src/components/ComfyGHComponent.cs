@@ -29,6 +29,7 @@ namespace ComfyGH.Components
 
         protected override void RegisterOutputParams(GH_Component.GH_OutputParamManager pManager)
         {
+            pManager.AddBooleanParameter("Executing", "Executing", "", GH_ParamAccess.item);
         }
 
         // ComfyUIから送られてくる情報を格納するためにDictionary、keyはComfyUIのノードid
@@ -214,6 +215,30 @@ namespace ComfyGH.Components
                 if (!isExist) return;
 
                 var data = outputData;
+
+                param.ClearData();
+                param.AddVolatileData(new GH_Path(1), 0, data);
+
+                if (param.Recipients.Count > 0)
+                {
+                    foreach (var recipient in param.Recipients)
+                    {
+                        recipient.ExpireSolution(true);
+                    }
+                }
+            });
+        }
+
+        private void ReflectOutputData_Executing(bool executing) 
+        {
+            // outputのParamにデータを反映させる
+            Rhino.RhinoApp.InvokeOnUiThread((Action)delegate
+            {
+                bool isExist = this.Params.Output.FirstOrDefault(p => p.Name == "Executing") != null;
+                if (!isExist) return;
+
+                var param = this.Params.Output.FirstOrDefault(p => p.Name == "Executing");
+                var data = executing;
 
                 param.ClearData();
                 param.AddVolatileData(new GH_Path(1), 0, data);
@@ -419,6 +444,7 @@ namespace ComfyGH.Components
                 {
                     // initialize
                     ((ComfyGHComponent)Parent).outputObjectsDic.Clear();
+                    ((ComfyGHComponent)Parent).ReflectOutputData_Executing(true);
 
                     // QueuePrompt時のActionを定義
                     int myQueuePosition = int.MaxValue;
@@ -509,6 +535,7 @@ namespace ComfyGH.Components
 
                     ((ComfyGHComponent)Parent).SetRunningState(RunningState.Finished);
                     Done();
+                    ((ComfyGHComponent)Parent).ReflectOutputData_Executing(false);
                 }
 
 
